@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "items",
+  "version": "1.0-SNAPSHOT",
+
+  "name": "Items",
+  "description": "",
+  "authors": [],
+  "contact": {},
+
+  "license": "All-Rights-Reserved",
+  "icon": "assets/items/icon.png",
+
+  "environment": "client",
+  "entrypoints": {
+    "client": ["items.items.client.ItemsClient"],
+    "main": ["items.items.Items"]
+  },
+
+  "mixins": [
+    "items.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=0.16.10",
+    "fabric": "*",
+    "minecraft": "1.21.2"
+  }
+}
