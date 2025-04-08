@@ -14,7 +14,10 @@ import net.minecraft.recipe.book.RecipeBookCategories;
 import net.minecraft.recipe.display.*;
 import net.minecraft.recipe.display.SlotDisplay.AnyFuelSlotDisplay;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.registry.entry.RegistryEntryList;
+import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.Identifier;
 import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
 
@@ -399,7 +402,6 @@ public class RecipeLoader {
 
 
 
-            // Извлекаем тип отображения
             if (line.contains("ShapelessCraftingRecipeDisplay")) {
 
                 System.out.println("Обрабатывается строка:" + line);
@@ -408,13 +410,9 @@ public class RecipeLoader {
                 Matcher idMatcher = Pattern.compile("NetworkID:NetworkRecipeId\\[index=(\\d+)]").matcher(line);
                 int index = idMatcher.find() ? Integer.parseInt(idMatcher.group(1)) : -1;
 
-                System.out.println("индекс");
-
                 // Получаем группу (если есть)
-                Matcher groupMatcher = Pattern.compile("Group:OptionalInt\\[(\\d+)]").matcher(line);
-                OptionalInt group = groupMatcher.find() ? OptionalInt.of(Integer.parseInt(groupMatcher.group(1))) : OptionalInt.empty();
-
-                System.out.println("группа");
+                Matcher groupMatcher = Pattern.compile("Group:OptionalInt\\[.*?\\]").matcher(line);
+                OptionalInt group = groupMatcher.find() ? OptionalInt.empty() : OptionalInt.empty(); // Поддержка при необходимости
 
                 // Получаем категорию
                 Matcher categoryMatcher = Pattern.compile("Category:Optional\\[ResourceKey\\[minecraft:recipe_book_category / minecraft:(\\w+)]]").matcher(line);
@@ -422,54 +420,73 @@ public class RecipeLoader {
                         ? Registries.RECIPE_BOOK_CATEGORY.get(Identifier.of("minecraft", categoryMatcher.group(1)))
                         : RecipeBookCategories.CRAFTING_MISC;
 
-                System.out.println("категория");
-
                 // Получаем результат
                 Matcher resultMatcher = Pattern.compile("result=StackSlotDisplay\\[stack=(\\d+) minecraft:(\\w+)]").matcher(line);
                 if (!resultMatcher.find()) return Optional.empty();
                 int resultCount = Integer.parseInt(resultMatcher.group(1));
                 String resultItem = fixResourceName(resultMatcher.group(2));
 
-                System.out.println("результат");
-
                 // Получаем станцию
                 Matcher stationMatcher = Pattern.compile("craftingStation=ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / ([^\\]]+)]").matcher(line);
                 if (!stationMatcher.find()) return Optional.empty();
                 String stationName = fixResourceName(stationMatcher.group(1));
 
-                System.out.println("станция");
+                // Получаем строку с ингредиентами (slots)
+                Matcher ingredientsMatcher = Pattern.compile("ingredients=\\[(.*?)]").matcher(line);
+                if (!ingredientsMatcher.find()) return Optional.empty();
+                String ingredientsSection = ingredientsMatcher.group(1);
 
-                // Получаем список ингредиентов (расшифрованный)
+                List<SlotDisplay> slots = new ArrayList<>();
+                for (String rawSlot : ingredientsSection.split(", ")) {
+                    if (rawSlot.equals("<empty>")) {
+                        slots.add(SlotDisplay.EmptySlotDisplay.INSTANCE);
+                        continue;
+                    }
+                    if (rawSlot.startsWith("TagSlotDisplay")) {
+                        String tagName = rawSlot.substring(rawSlot.indexOf("minecraft:") + "minecraft:".length(), rawSlot.indexOf("]")).trim();
+                        String[] splitTag = tagName.split(":");
+                        String lastWord = splitTag[splitTag.length - 1];
+                        TagKey<Item> tagKey = TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", lastWord));
+                        slots.add(new SlotDisplay.TagSlotDisplay(tagKey));
+                    } else if (rawSlot.startsWith("CompositeSlotDisplay")) {
+                        Matcher compositeMatcher = Pattern.compile("CompositeSlotDisplay\\[contents=\\[(.*)]").matcher(rawSlot);
+                        if (compositeMatcher.find()) {
+                            String contents = compositeMatcher.group(1);
+                            List<SlotDisplay> compositeContents = new ArrayList<>();
+                            for (String nestedSlot : contents.split(", ")) {
+                                if (nestedSlot.startsWith("ItemSlotDisplay")) {
+                                    Matcher itemMatcher = Pattern.compile("ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / ([^\\]]+)]").matcher(nestedSlot);
+                                    if (itemMatcher.find()) {
+                                        String itemName = fixResourceName(itemMatcher.group(1));
+                                        Item item = Registries.ITEM.get(Identifier.of("minecraft", itemName));
+                                        compositeContents.add(new SlotDisplay.ItemSlotDisplay(item));
+                                    }
+                                }
+                            }
+                            slots.add(new SlotDisplay.CompositeSlotDisplay(compositeContents));
+                        }
+                    }
+                }
+
+                // Получаем Crafting Requirements Items
                 Matcher itemsMatcher = Pattern.compile("Crafting Requirements Items:(.*)").matcher(line);
                 if (!itemsMatcher.find()) return Optional.empty();
                 String itemsSection = itemsMatcher.group(1);
 
-                List<SlotDisplay> slots = new ArrayList<>();
                 List<Ingredient> ingredients = new ArrayList<>();
-
-                // Каждая строка — один слот (с множеством вариантов)
-                for (String rawSlot : itemsSection.split(";")) {
-                    String[] variants = rawSlot.split(",");
-                    if (variants.length == 0 || (variants.length == 1 && variants[0].isBlank())) {
-                        // пустой слот
-                        slots.add(new SlotDisplay.CompositeSlotDisplay(List.of()));
-                        continue;
+                for (String rawItem : itemsSection.split(";")) {
+                    for (String itemVariant : rawItem.split(",")) {
+                        String itemName = itemVariant.trim();
+                        if (!itemName.isBlank()) {
+                            String[] splitItem = itemName.split(":");
+                            String lastWord = splitItem[splitItem.length - 1];
+                            Item item = Registries.ITEM.get(Identifier.of("minecraft", lastWord));
+                            ingredients.add(Ingredient.ofItems(item));
+                        }
                     }
-
-                    List<SlotDisplay> slotVariants = new ArrayList<>();
-                    List<Item> ingredientItems = new ArrayList<>();
-                    for (String variant : variants) {
-                        variant = fixResourceName(variant.trim());
-                        Item item = Registries.ITEM.get(Identifier.of("minecraft", variant));
-                        slotVariants.add(new SlotDisplay.ItemSlotDisplay(item));
-                        ingredientItems.add(item);
-                    }
-
-                    slots.add(new SlotDisplay.CompositeSlotDisplay(slotVariants));
-                    ingredients.add(Ingredient.ofItems(ingredientItems.toArray(new Item[0])));
                 }
 
-                // Создаем результат и станцию
+                // Результат и станция
                 SlotDisplay.StackSlotDisplay result = new SlotDisplay.StackSlotDisplay(
                         new ItemStack(Registries.ITEM.get(Identifier.of("minecraft", resultItem)), resultCount)
                 );
@@ -483,14 +500,14 @@ public class RecipeLoader {
                 ShapelessCraftingRecipeDisplay display = new ShapelessCraftingRecipeDisplay(slots, result, station);
                 RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
 
-                System.out.println("Результат обработки:" + entry);
-
                 return Optional.of(entry);
             }
 
 
 
-            // Извлекаем тип отображения
+
+// Извлекаем тип отображения
+// Извлекаем тип отображения
             if (line.contains("ShapedCraftingRecipeDisplay")) {
 
                 System.out.println("Обрабатывается строка:" + line);
@@ -499,13 +516,9 @@ public class RecipeLoader {
                 Matcher idMatcher = Pattern.compile("NetworkID:NetworkRecipeId\\[index=(\\d+)]").matcher(line);
                 int index = idMatcher.find() ? Integer.parseInt(idMatcher.group(1)) : -1;
 
-                System.out.println("индекс");
-
                 // Получаем группу (если есть)
-                Matcher groupMatcher = Pattern.compile("Group:OptionalInt\\[(\\d+)]").matcher(line);
-                OptionalInt group = groupMatcher.find() ? OptionalInt.of(Integer.parseInt(groupMatcher.group(1))) : OptionalInt.empty();
-
-                System.out.println("группа");
+                Matcher groupMatcher = Pattern.compile("Group:OptionalInt\\[.*?\\]").matcher(line);
+                OptionalInt group = groupMatcher.find() ? OptionalInt.empty() : OptionalInt.empty(); // Если группа отсутствует, то остаемся с пустым OptionalInt
 
                 // Получаем категорию
                 Matcher categoryMatcher = Pattern.compile("Category:Optional\\[ResourceKey\\[minecraft:recipe_book_category / minecraft:(\\w+)]]").matcher(line);
@@ -513,67 +526,90 @@ public class RecipeLoader {
                         ? Registries.RECIPE_BOOK_CATEGORY.get(Identifier.of("minecraft", categoryMatcher.group(1)))
                         : RecipeBookCategories.CRAFTING_MISC;
 
-                System.out.println("категория");
-
                 // Получаем ширину и высоту
                 Matcher dimMatcher = Pattern.compile("ShapedCraftingRecipeDisplay\\[width=(\\d+), height=(\\d+)").matcher(line);
                 if (!dimMatcher.find()) return Optional.empty();
                 int width = Integer.parseInt(dimMatcher.group(1));
                 int height = Integer.parseInt(dimMatcher.group(2));
 
-                System.out.println("ширина-высота");
-
                 // Получаем результат
                 Matcher resultMatcher = Pattern.compile("result=StackSlotDisplay\\[stack=(\\d+) minecraft:(\\w+)]").matcher(line);
                 if (!resultMatcher.find()) return Optional.empty();
                 int resultCount = Integer.parseInt(resultMatcher.group(1));
-                String resultItem = fixResourceName(resultMatcher.group(2));
-
-                System.out.println("результат");
+                String resultItem = fixResourceName(resultMatcher.group(2)); // Применяем fixResourceName
 
                 // Получаем станцию
                 Matcher stationMatcher = Pattern.compile("craftingStation=ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / ([^\\]]+)]").matcher(line);
                 if (!stationMatcher.find()) return Optional.empty();
-                String stationName = fixResourceName(stationMatcher.group(1));
+                String stationName = fixResourceName(stationMatcher.group(1)); // Применяем fixResourceName
 
-                System.out.println("станция");
+                // Получаем строку с ингредиентами и слотами
+                Matcher ingredientsMatcher = Pattern.compile("ingredients=\\[(.*)]").matcher(line);
+                if (!ingredientsMatcher.find()) return Optional.empty();
+                String ingredientsSection = ingredientsMatcher.group(1);
 
-                // Получаем список ингредиентов (расшифрованный)
+                // Разбиваем строку на компоненты для тегов и CompositeSlotDisplay
+                List<SlotDisplay> slots = new ArrayList<>();
+                for (String rawSlot : ingredientsSection.split(", ")) {
+                    if (rawSlot.equals("<empty>")) {
+                        slots.add(SlotDisplay.EmptySlotDisplay.INSTANCE);
+                        continue;
+                    }
+                    if (rawSlot.startsWith("TagSlotDisplay")) {
+                        // Извлекаем имя тега
+                        String tagName = rawSlot.substring(rawSlot.indexOf("minecraft:") + "minecraft:".length(), rawSlot.indexOf("]")).trim();
+                        // Оставляем только последнее слово (после последнего "/")
+                        String[] splitTag = tagName.split(":");
+                        String lastWord = splitTag[splitTag.length - 1];  // Берем последнее слово
+                        TagKey<Item> tagKey = TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", lastWord));
+                        slots.add(new SlotDisplay.TagSlotDisplay(tagKey));
+                    } else if (rawSlot.startsWith("CompositeSlotDisplay")) {
+                        // Обрабатываем CompositeSlotDisplay, извлекая вложенные слоты
+                        Matcher compositeMatcher = Pattern.compile("CompositeSlotDisplay\\[contents=\\[(.*)]").matcher(rawSlot);
+                        if (compositeMatcher.find()) {
+                            String contents = compositeMatcher.group(1);
+                            List<SlotDisplay> compositeContents = new ArrayList<>();
+                            for (String nestedSlot : contents.split(", ")) {
+                                // Обработка вложенных слотов (например, ItemSlotDisplay)
+                                if (nestedSlot.startsWith("ItemSlotDisplay")) {
+                                    Matcher itemMatcher = Pattern.compile("ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / ([^\\]]+)]").matcher(nestedSlot);
+                                    if (itemMatcher.find()) {
+                                        String itemName = fixResourceName(itemMatcher.group(1)); // Применяем fixResourceName
+                                        Item item = Registries.ITEM.get(Identifier.of("minecraft", itemName));
+                                        compositeContents.add(new SlotDisplay.ItemSlotDisplay(item));
+                                    }
+                                }
+                            }
+                            slots.add(new SlotDisplay.CompositeSlotDisplay(compositeContents));
+                        }
+                    }
+                }
+
+                // Получаем Crafting Requirements Items
                 Matcher itemsMatcher = Pattern.compile("Crafting Requirements Items:(.*)").matcher(line);
                 if (!itemsMatcher.find()) return Optional.empty();
                 String itemsSection = itemsMatcher.group(1);
 
-                List<SlotDisplay> slots = new ArrayList<>();
+                // Формируем список ингредиентов
                 List<Ingredient> ingredients = new ArrayList<>();
-
-                // Каждая строка — один слот (с множеством вариантов)
-                for (String rawSlot : itemsSection.split(";")) {
-                    String[] variants = rawSlot.split(",");
-                    if (variants.length == 0 || (variants.length == 1 && variants[0].isBlank())) {
-                        // пустой слот
-                        slots.add(new SlotDisplay.CompositeSlotDisplay(List.of()));
-                        continue;
+                for (String rawItem : itemsSection.split(";")) {
+                    for (String itemVariant : rawItem.split(",")) {
+                        String itemName = itemVariant.trim();
+                        if (!itemName.isBlank()) {
+                            // Оставляем только последнее слово (после последнего "/")
+                            String[] splitItem = itemName.split(":");
+                            String lastWord = splitItem[splitItem.length - 1];
+                            // Проверка на пустой элемент
+                            Item item = Registries.ITEM.get(Identifier.of("minecraft", lastWord));
+                            ingredients.add(Ingredient.ofItems(item));  // Заполняем ингредиенты на основе предметов
+                        }
                     }
-
-                    List<SlotDisplay> slotVariants = new ArrayList<>();
-                    List<Item> ingredientItems = new ArrayList<>();
-                    for (String variant : variants) {
-                        variant = fixResourceName(variant.trim());
-                        Item item = Registries.ITEM.get(Identifier.of("minecraft", variant));
-                        slotVariants.add(new SlotDisplay.ItemSlotDisplay(item));
-                        ingredientItems.add(item);
-                    }
-
-                    slots.add(new SlotDisplay.CompositeSlotDisplay(slotVariants));
-                    ingredients.add(Ingredient.ofItems(ingredientItems.toArray(new Item[0])));
                 }
 
                 // Убедимся, что у нас есть width * height слотов
                 int total = width * height;
                 while (slots.size() < total) slots.add(new SlotDisplay.CompositeSlotDisplay(List.of()));
                 if (slots.size() > total) slots = slots.subList(0, total);
-
-                System.out.println("ингридиенты");
 
                 // Создаем результат и станцию
                 SlotDisplay.StackSlotDisplay result = new SlotDisplay.StackSlotDisplay(
@@ -589,10 +625,12 @@ public class RecipeLoader {
                 ShapedCraftingRecipeDisplay display = new ShapedCraftingRecipeDisplay(width, height, slots, result, station);
                 RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
 
-                System.out.println("Результат обработки:" + entry);
-
                 return Optional.of(entry);
             }
+
+
+
+
 
 
 
