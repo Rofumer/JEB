@@ -4,8 +4,6 @@
   "package": "items.items.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "SynchronizeRecipesMixin",
-    "RecipeBookAddMixin",
     "RecipeBookWidgetMixin",
     "ClientRecipeBookMixin"
   ],
