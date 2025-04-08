@@ -72,6 +72,16 @@ public class RecipeListScreen extends Screen {
                 }).position(this.width / 2 - 100, this.height / 2 - 20)
                 .size(200, 20)
                 .build());
+
+        this.addDrawableChild(ButtonWidget.builder(Text.of("Load All Recipes"), button -> {
+                    try {
+                        loadAllRecipes();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }).position(this.width / 2 - 100, this.height / 2 - 40)
+                .size(200, 20)
+                .build());
     }
 
     private static void printObjectDetails(Object obj) {
@@ -106,18 +116,43 @@ public class RecipeListScreen extends Screen {
             //System.out.println("Category hashcode: " + category.hashCode());
         }
     }
+
+    private void loadAllRecipes() throws InterruptedException {
+        // Запускаем задачу в отдельном потоке, чтобы не блокировать главный поток
+
+        try {
+
+            loadRecipesFromLog(new File("recipes_output.txt"));
+
+            // Здесь можно добавить логику для получения всех рецептов или другого действия
+            // Например, задержка, чтобы увидеть результат
+            Thread.sleep(1000); // Просто пример ожидания, это можно удалить или заменить на реальную логику
+
+            LOGGER.info("Recipes loaded successfully.");
+        } catch (Exception e) {
+            // Логируем исключения, если они возникнут
+            LOGGER.error("Error occurred while loading recipes", e);
+        }
+
+
+        // Здесь можно добавить логику для получения всех рецептов или другого действия
+        // Например, задержка, чтобы увидеть результат
+        Thread.sleep(1000); // Просто пример ожидания, это можно удалить или заменить на реальную логику
+
+
+    }
+
     private void showAllRecipes() throws InterruptedException {
         // Запускаем задачу в отдельном потоке, чтобы не блокировать главный поток
 
             try {
 
-                loadRecipesFromLog(new File("recipes_output.txt"));
 
 
 
 
 
-                /*MinecraftClient client = MinecraftClient.getInstance();
+                MinecraftClient client = MinecraftClient.getInstance();
                 if (client.player != null) {
                     ClientRecipeBook recipeBook = client.player.getRecipeBook();
                     List<RecipeResultCollection> recipes = recipeBook.getOrderedResults();
@@ -190,7 +225,7 @@ public class RecipeListScreen extends Screen {
 
                         }
                     }
-                }*/
+                }
 
 
 

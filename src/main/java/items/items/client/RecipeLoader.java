@@ -12,7 +12,9 @@ import net.minecraft.recipe.RecipeDisplayEntry;
 import net.minecraft.recipe.book.RecipeBookCategory;
 import net.minecraft.recipe.book.RecipeBookCategories;
 import net.minecraft.recipe.display.*;
+import net.minecraft.recipe.display.SlotDisplay.AnyFuelSlotDisplay;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.Identifier;
 import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
 
@@ -93,6 +95,37 @@ public class RecipeLoader {
 
                 System.out.println("станция: " + stationName);
 
+                // Получаем список ингредиентов (расшифрованный)
+                Matcher itemsMatcher = Pattern.compile("Crafting Requirements Items:(.*)").matcher(line);
+                if (!itemsMatcher.find()) return Optional.empty();
+                String itemsSection = itemsMatcher.group(1);
+
+                List<SlotDisplay> slots = new ArrayList<>();
+                List<Ingredient> ingredients = new ArrayList<>();
+
+                // Каждая строка — один слот (с множеством вариантов)
+                for (String rawSlot : itemsSection.split(";")) {
+                    String[] variants = rawSlot.split(",");
+                    if (variants.length == 0 || (variants.length == 1 && variants[0].isBlank())) {
+                        // пустой слот
+                        slots.add(new SlotDisplay.CompositeSlotDisplay(List.of()));
+                        continue;
+                    }
+
+                    List<SlotDisplay> slotVariants = new ArrayList<>();
+                    List<Item> ingredientItems = new ArrayList<>();
+                    for (String variant : variants) {
+                        variant = fixResourceName(variant.trim());
+                        Item item = Registries.ITEM.get(Identifier.of("minecraft", variant));
+                        slotVariants.add(new SlotDisplay.ItemSlotDisplay(item));
+                        ingredientItems.add(item);
+                    }
+
+                    slots.add(new SlotDisplay.CompositeSlotDisplay(slotVariants));
+                    ingredients.add(Ingredient.ofItems(ingredientItems.toArray(new Item[0])));
+                }
+
+
                 // Собираем объект рецепта
                 SlotDisplay.ItemSlotDisplay inputSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", inputItem)));
                 SlotDisplay.StackSlotDisplay resultSlot = new SlotDisplay.StackSlotDisplay(
@@ -108,7 +141,7 @@ public class RecipeLoader {
                         stationSlot // станция
                 );
 
-                RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.empty());
+                RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
 
                 System.out.println("Результат обработки:" + entry);
 
@@ -170,6 +203,37 @@ public class RecipeLoader {
 
                 System.out.println("станция: " + stationName);
 
+                // Получаем список ингредиентов (расшифрованный)
+                Matcher itemsMatcher = Pattern.compile("Crafting Requirements Items:(.*)").matcher(line);
+                if (!itemsMatcher.find()) return Optional.empty();
+                String itemsSection = itemsMatcher.group(1);
+
+                List<SlotDisplay> slots = new ArrayList<>();
+                List<Ingredient> ingredients = new ArrayList<>();
+
+                // Каждая строка — один слот (с множеством вариантов)
+                for (String rawSlot : itemsSection.split(";")) {
+                    String[] variants = rawSlot.split(",");
+                    if (variants.length == 0 || (variants.length == 1 && variants[0].isBlank())) {
+                        // пустой слот
+                        slots.add(new SlotDisplay.CompositeSlotDisplay(List.of()));
+                        continue;
+                    }
+
+                    List<SlotDisplay> slotVariants = new ArrayList<>();
+                    List<Item> ingredientItems = new ArrayList<>();
+                    for (String variant : variants) {
+                        variant = fixResourceName(variant.trim());
+                        Item item = Registries.ITEM.get(Identifier.of("minecraft", variant));
+                        slotVariants.add(new SlotDisplay.ItemSlotDisplay(item));
+                        ingredientItems.add(item);
+                    }
+
+                    slots.add(new SlotDisplay.CompositeSlotDisplay(slotVariants));
+                    ingredients.add(Ingredient.ofItems(ingredientItems.toArray(new Item[0])));
+                }
+
+
                 // Собираем объект рецепта
                 SlotDisplay.ItemSlotDisplay templateSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", templateItem)));
                 SlotDisplay.ItemSlotDisplay baseSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", baseItem)));
@@ -189,7 +253,7 @@ public class RecipeLoader {
                         stationSlot // станция
                 );
 
-                RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.empty());
+                RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
 
                 System.out.println("Результат обработки:" + entry);
 
@@ -246,14 +310,11 @@ public class RecipeLoader {
                 System.out.println("топливо: " + (fuel != null ? fuel : "не задано"));
 
                 // Если топлива нет, используем пустой слот
-                SlotDisplay.ItemSlotDisplay fuelSlot = null;
-                if (fuel != null && !fuel.equals("<any fuel>")) {
-                    fuelSlot = new SlotDisplay.ItemSlotDisplay(
-                            Registries.ITEM.get(Identifier.of("minecraft", fixResourceName(fuel)))
-                    );
-                } else {
-                    fuelSlot = new SlotDisplay.ItemSlotDisplay(Items.AIR); // Если топлива нет, используем пустой слот
-                }
+                SlotDisplay.AnyFuelSlotDisplay fuelSlot = null;
+
+                fuelSlot = SlotDisplay.AnyFuelSlotDisplay.INSTANCE;
+                ;
+                ; // Если топлива нет, используем пустой слот
 
                 System.out.println("топливо: " + (fuel != null ? fuel : "нет"));
 
@@ -281,6 +342,30 @@ public class RecipeLoader {
 
                 System.out.println("время и опыт");
 
+                // Получаем список ингредиентов (расшифрованный)
+                Matcher itemsMatcher = Pattern.compile("Crafting Requirements Items:(.*)").matcher(line);
+                if (!itemsMatcher.find()) return Optional.empty();
+                String itemsSection = itemsMatcher.group(1);
+
+                List<Ingredient> ingredients = new ArrayList<>();
+
+                // Каждая строка — один слот (с множеством вариантов)
+                List<SlotDisplay> slotVariants = null;
+                for (String rawSlot : itemsSection.split(";")) {
+                    String[] variants = rawSlot.split(",");
+
+                    slotVariants = new ArrayList<>();
+                    List<Item> ingredientItems = new ArrayList<>();
+                    for (String variant : variants) {
+                        variant = fixResourceName(variant.trim());
+                        Item item = Registries.ITEM.get(Identifier.of("minecraft", variant));
+                        slotVariants.add(new SlotDisplay.ItemSlotDisplay(item));
+                        ingredientItems.add(item);
+                    }
+
+                    ingredients.add(Ingredient.ofItems(ingredientItems.toArray(new Item[0])));
+                }
+
                 // Создаем результат
                 SlotDisplay.StackSlotDisplay result = new SlotDisplay.StackSlotDisplay(
                         new ItemStack(Registries.ITEM.get(Identifier.of("minecraft", resultItem)), resultCount)
@@ -296,7 +381,7 @@ public class RecipeLoader {
 
                 // Теперь мы передаем все необходимые параметры
                 FurnaceRecipeDisplay display = new FurnaceRecipeDisplay(
-                        new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", ingredientItem))), // ingredient
+                        new SlotDisplay.CompositeSlotDisplay(slotVariants), // ingredien)
                         fuelSlot, // fuel slot
                         result, // result
                         station, // station
@@ -304,7 +389,7 @@ public class RecipeLoader {
                         experience // experience
                 );
 
-                RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.empty());
+                RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
 
                 System.out.println("Результат обработки:" + entry);
 
@@ -508,6 +593,8 @@ public class RecipeLoader {
 
                 return Optional.of(entry);
             }
+
+
 
         } catch (Exception e) {
             System.out.println("Ошибка при парсинге строки: " + e.getMessage());
