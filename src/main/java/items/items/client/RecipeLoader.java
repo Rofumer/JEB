@@ -175,14 +175,13 @@ public class RecipeLoader {
                 Matcher idMatcher = Pattern.compile("NetworkID:NetworkRecipeId\\[index=(\\d+)]").matcher(line);
                 int index = idMatcher.find() ? Integer.parseInt(idMatcher.group(1)) : -1;
 
-// Получаем группу (если есть)
+                // Получаем группу (если есть)
                 OptionalInt group = OptionalInt.empty();
                 Matcher groupMatcher = Pattern.compile("Group:OptionalInt\\[(\\d+)]").matcher(line);
                 if (groupMatcher.find()) {
                     int groupValue = Integer.parseInt(groupMatcher.group(1));
                     group = OptionalInt.of(groupValue);
                 }
-
 
                 // Получаем категорию
                 Matcher categoryMatcher = Pattern.compile("Category:Optional\\[ResourceKey\\[minecraft:recipe_book_category / minecraft:(\\w+)]]").matcher(line);
@@ -194,44 +193,43 @@ public class RecipeLoader {
                 Matcher templateMatcher = Pattern.compile("template=CompositeSlotDisplay\\[contents=\\[ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:(.*?)\\]=minecraft:(.*?)\\}\\]\\]]").matcher(line);
                 String templateItem = templateMatcher.find() ? fixResourceName(templateMatcher.group(2)) : null;
 
-// Сначала проверяем для CompositeSlotDisplay (существующий вариант)
+                // Получаем базовый элемент (base)
+                String baseItem = null;
                 Matcher baseMatcher = Pattern.compile("base=CompositeSlotDisplay\\[contents=\\[ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:(.*?)\\]=minecraft:(.*?)\\}\\]\\]]").matcher(line);
-                String baseItem = baseMatcher.find() ? fixResourceName(baseMatcher.group(2)) : null;
-
-// Если не нашли в CompositeSlotDisplay, проверяем для TagSlotDisplay
-                if (baseItem == null) {
+                if (baseMatcher.find()) {
+                    baseItem = fixResourceName(baseMatcher.group(2));
+                } else {
+                    // Если не нашли в CompositeSlotDisplay, проверяем для TagSlotDisplay
                     Matcher tagBaseMatcher = Pattern.compile("base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:(.*?)\\]\\]").matcher(line);
                     baseItem = tagBaseMatcher.find() ? fixResourceName(tagBaseMatcher.group(1)) : null;
                 }
 
-// Если baseItem все еще null, возвращаем Optional.empty()
+                // Если baseItem все еще null, значит нет базового элемента, пропускаем его
                 if (baseItem == null) {
-                    return Optional.empty();
+                    baseItem = "minecraft:air"; // или можно поставить null, если не хотите добавлять базовый элемент
                 }
 
-
+                // Получаем добавление (addition)
+                String additionTag = null;
                 Matcher additionMatcher = Pattern.compile("addition=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:(.*?)\\]\\]").matcher(line);
-                String additionTag = additionMatcher.find() ? fixResourceName(additionMatcher.group(1)) : null;
+                additionTag = additionMatcher.find() ? fixResourceName(additionMatcher.group(1)) : "minecraft:air"; // аналогично baseItem
 
-                // Получаем результат
+                // Получаем результат (результат может быть как StackSlotDisplay, так и SmithingTrimSlotDisplay)
                 Matcher resultMatcher = Pattern.compile("result=StackSlotDisplay\\[stack=(\\d+) minecraft:(\\w+)]").matcher(line);
                 Matcher trimResultMatcher = Pattern.compile("result=SmithingTrimSlotDisplay\\[base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],.*?material=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\]").matcher(line);
-
 
                 String resultItem = null;
                 int resultCount = 1; // По умолчанию результат = 1
 
                 if (trimResultMatcher.find()) {
-                    System.out.println("Захватили SmithingTrimSlotDisplay: " + trimResultMatcher.group(1));
                     resultItem = trimResultMatcher.group(1);  // Извлекаем item из SmithingTrimSlotDisplay
-                    System.out.println("resultItem: " + resultItem);
+                    System.out.println("resultItem (SmithingTrimSlotDisplay): " + resultItem);
                 }
                 else if (resultMatcher.find()) {
-                    // Обрабатываем обычный StackSlotDisplay
                     resultCount = Integer.parseInt(resultMatcher.group(1));
                     resultItem = fixResourceName(resultMatcher.group(2));
                 } else {
-                    return Optional.empty(); // Если не нашли ни того, ни другого, возвращаем Optional.empty
+                    resultItem = "minecraft:air"; // если не найден результат, ставим "air"
                 }
 
                 // Получаем станцию
@@ -239,9 +237,7 @@ public class RecipeLoader {
                 if (!stationMatcher.find()) return Optional.empty();
                 String stationName = fixResourceName(stationMatcher.group(2));
 
-                System.out.println("test1");
-
-// Получаем Crafting Requirements Items
+                // Получаем Crafting Requirements Items
                 Matcher itemsMatcher = Pattern.compile("Crafting Requirements Items:(.*)").matcher(line);
                 if (!itemsMatcher.find()) return Optional.empty();
 
@@ -270,32 +266,19 @@ public class RecipeLoader {
                     }
                 }
 
-
-                System.out.println("test3");
-
                 // Собираем объект рецепта
                 SlotDisplay.ItemSlotDisplay templateSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", templateItem)));
-                System.out.println("test3.1");
                 SlotDisplay.ItemSlotDisplay baseSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", baseItem)));
-                System.out.println("test3.2");
                 SlotDisplay.ItemSlotDisplay additionSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", additionTag)));
-                System.out.println("test3.3");
-                System.out.println("test4");
                 SlotDisplay.StackSlotDisplay resultSlot = new SlotDisplay.StackSlotDisplay(
                         new ItemStack(Registries.ITEM.get(Identifier.of("minecraft", resultItem)), resultCount)
                 );
-                System.out.println("test5");
                 SlotDisplay.ItemSlotDisplay stationSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", stationName)));
 
-                System.out.println("test6");
                 // Собираем объект рецепта
                 NetworkRecipeId recipeId = new NetworkRecipeId(index);
                 SmithingRecipeDisplay display = new SmithingRecipeDisplay(
-                        templateSlot, // Шаблон
-                        baseSlot, // База
-                        additionSlot, // Добавление
-                        resultSlot, // Результат
-                        stationSlot // Станция
+                        templateSlot, baseSlot, additionSlot, resultSlot, stationSlot
                 );
 
                 RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
@@ -659,16 +642,25 @@ public class RecipeLoader {
                     }
                 }
 
-                SlotDisplay.StackSlotDisplay result = new SlotDisplay.StackSlotDisplay(
-                        new ItemStack(Registries.ITEM.get(Identifier.of("minecraft", resultItem)), resultCount)
-                );
+                SlotDisplay resultDisplay;
+                if (line.contains("result=StackSlotDisplay")) {
+                    resultDisplay = new SlotDisplay.StackSlotDisplay(
+                            new ItemStack(Registries.ITEM.get(Identifier.of("minecraft", resultItem)), resultCount)
+                    );
+                } else {
+                    resultDisplay = new SlotDisplay.ItemSlotDisplay(
+                            Registries.ITEM.get(Identifier.of("minecraft", resultItem))
+                    );
+                }
+
 
                 SlotDisplay.ItemSlotDisplay station = new SlotDisplay.ItemSlotDisplay(
                         Registries.ITEM.get(Identifier.of("minecraft", stationName))
                 );
 
                 NetworkRecipeId recipeId = new NetworkRecipeId(index);
-                ShapelessCraftingRecipeDisplay display = new ShapelessCraftingRecipeDisplay(slots, result, station);
+                ShapelessCraftingRecipeDisplay display = new ShapelessCraftingRecipeDisplay(slots, resultDisplay, station);
+
                 RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
 
                 return Optional.of(entry);
