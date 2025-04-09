@@ -168,7 +168,7 @@ public class RecipeListScreen extends Screen {
                             entryString.append("Category:").append(Registries.RECIPE_BOOK_CATEGORY.getKey(entry.category()).toString()).append(";");
                             entryString.append("NetworkID:").append(entry.id().toString()).append(";");
                             entryString.append("Group:").append(entry.group().toString()).append(";");
-                            entryString.append("Crafting Requirements Structure:").append(entry.craftingRequirements().toString()).append(";");
+                            //entryString.append("Crafting Requirements Structure:").append(entry.craftingRequirements().toString()).append(";");
                             entryString.append("Crafting Requirements Items:");
 
                             //System.out.println(entryString);
