@@ -321,16 +321,30 @@ public class RecipeLoader {
                         ? Registries.RECIPE_BOOK_CATEGORY.get(Identifier.of("minecraft", categoryMatcher.group(1)))
                         : RecipeBookCategories.CRAFTING_MISC;
 
-                // Получаем ингредиенты
-                Matcher ingredientMatcher = Pattern.compile("ingredient=CompositeSlotDisplay\\[contents=\\[(.*?)\\]\\]").matcher(line);
-                if (!ingredientMatcher.find()) return Optional.empty();
+                // --- ИНГРЕДИЕНТЫ ---
+                SlotDisplay ingredientSlot = null;
 
-                String ingredientsSection = ingredientMatcher.group(1);
-                List<SlotDisplay> ingredientSlots = new ArrayList<>();
-                Matcher itemMatcher = Pattern.compile("ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / (minecraft:[^\\]]+)\\]=minecraft:[^\\]]+\\}\\]").matcher(ingredientsSection);
-                while (itemMatcher.find()) {
-                    String ingredientItem = fixResourceName(itemMatcher.group(1));
-                    ingredientSlots.add(new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", ingredientItem))));
+                // Пытаемся найти TagSlotDisplay
+                Matcher tagMatcher = Pattern.compile("ingredient=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)]]").matcher(line);
+                if (tagMatcher.find()) {
+                    String tag = tagMatcher.group(1);
+                    ingredientSlot = new SlotDisplay.TagSlotDisplay(TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", tag)));
+                } else {
+                    // Иначе ищем CompositeSlotDisplay
+                    Matcher ingredientMatcher = Pattern.compile("ingredient=CompositeSlotDisplay\\[contents=\\[(.*?)\\]\\]").matcher(line);
+                    if (!ingredientMatcher.find()) return Optional.empty();
+
+                    String ingredientsSection = ingredientMatcher.group(1);
+                    List<SlotDisplay> ingredientSlots = new ArrayList<>();
+
+                    // Парсим все ItemSlotDisplay внутри Composite
+                    Matcher itemMatcher = Pattern.compile("ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / ([^\\]=]+)]=").matcher(ingredientsSection);
+                    while (itemMatcher.find()) {
+                        String ingredientItem = fixResourceName(itemMatcher.group(1));
+                        ingredientSlots.add(new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", ingredientItem))));
+                    }
+
+                    ingredientSlot = new SlotDisplay.CompositeSlotDisplay(ingredientSlots);
                 }
 
                 // Получаем топливо (если указано)
@@ -339,7 +353,7 @@ public class RecipeLoader {
                 if (fuelMatcher.find()) {
                     String fuelValue = fuelMatcher.group(1);
                     if (!"any fuel".equals(fuelValue)) {
-                        fuel = fixResourceName(fuelValue); // обработка корректного идентификатора
+                        fuel = fixResourceName(fuelValue);
                     }
                 }
 
@@ -393,7 +407,7 @@ public class RecipeLoader {
                 NetworkRecipeId recipeId = new NetworkRecipeId(index);
 
                 FurnaceRecipeDisplay display = new FurnaceRecipeDisplay(
-                        new SlotDisplay.CompositeSlotDisplay(ingredientSlots),
+                        ingredientSlot,
                         fuelSlot,
                         result,
                         station,
@@ -706,7 +720,7 @@ public class RecipeLoader {
 
                 // Разбиваем строку на компоненты для тегов и CompositeSlotDisplay
                 List<SlotDisplay> slots = new ArrayList<>();
-                for (String rawSlot : ingredientsSection.split(", ")) {
+                    for (String rawSlot : ingredientsSection.split(", ")) {
                     if (rawSlot.equals("<empty>")) {
                         slots.add(SlotDisplay.EmptySlotDisplay.INSTANCE);
                         continue;
