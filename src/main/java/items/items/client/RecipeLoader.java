@@ -557,7 +557,7 @@ public class RecipeLoader {
                 if (!current.isEmpty()) rawSlots.add(current.toString().trim());
 
                 for (String rawSlot : rawSlots) {
-                    if (rawSlot.equals("<empty>")) {
+                    if (rawSlot.startsWith("<empty")) {
                         slots.add(SlotDisplay.EmptySlotDisplay.INSTANCE);
                     } else if (rawSlot.startsWith("TagSlotDisplay")) {
                         String tagName = rawSlot.substring(rawSlot.indexOf("minecraft:") + "minecraft:".length(), rawSlot.indexOf("]")).trim();
@@ -718,39 +718,49 @@ public class RecipeLoader {
                 if (!ingredientsMatcher.find()) return Optional.empty();
                 String ingredientsSection = ingredientsMatcher.group(1);
 
-                // Разбиваем строку на компоненты для тегов и CompositeSlotDisplay
+// Разбиваем строку на компоненты для тегов и CompositeSlotDisplay
                 List<SlotDisplay> slots = new ArrayList<>();
-                    for (String rawSlot : ingredientsSection.split(", ")) {
-                    if (rawSlot.equals("<empty>")) {
+                for (String rawSlot : ingredientsSection.split(", ")) {
+                    System.out.println("Обработка rawSlot: '" + rawSlot + "'");
+
+                    rawSlot = rawSlot.trim();
+
+                    if (rawSlot.startsWith("<empty")) {
                         slots.add(SlotDisplay.EmptySlotDisplay.INSTANCE);
+                        System.out.println("Добавлен EmptySlotDisplay");
                         continue;
                     }
+
                     if (rawSlot.startsWith("TagSlotDisplay")) {
                         // Извлекаем имя тега
                         String tagName = rawSlot.substring(rawSlot.indexOf("minecraft:") + "minecraft:".length(), rawSlot.indexOf("]")).trim();
-                        // Оставляем только последнее слово (после последнего "/")
                         String[] splitTag = tagName.split(":");
-                        String lastWord = splitTag[splitTag.length - 1];  // Берем последнее слово
+                        String lastWord = splitTag[splitTag.length - 1];
                         TagKey<Item> tagKey = TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", lastWord));
                         slots.add(new SlotDisplay.TagSlotDisplay(tagKey));
+                        System.out.println("Добавлен TagSlotDisplay: " + lastWord);
                     } else if (rawSlot.startsWith("CompositeSlotDisplay")) {
                         // Обрабатываем CompositeSlotDisplay, извлекая вложенные слоты
                         Matcher compositeMatcher = Pattern.compile("CompositeSlotDisplay\\[contents=\\[(.*)]").matcher(rawSlot);
                         if (compositeMatcher.find()) {
                             String contents = compositeMatcher.group(1);
+                            System.out.println("Найден CompositeSlotDisplay, contents: " + contents);
                             List<SlotDisplay> compositeContents = new ArrayList<>();
                             for (String nestedSlot : contents.split(", ")) {
-                                // Обработка вложенных слотов (например, ItemSlotDisplay)
+                                System.out.println("Обработка вложенного слота: '" + nestedSlot + "'");
                                 if (nestedSlot.startsWith("ItemSlotDisplay")) {
                                     Matcher itemMatcher = Pattern.compile("ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / ([^\\]]+)]").matcher(nestedSlot);
                                     if (itemMatcher.find()) {
-                                        String itemName = fixResourceName(itemMatcher.group(1)); // Применяем fixResourceName
+                                        String itemName = fixResourceName(itemMatcher.group(1));
                                         Item item = Registries.ITEM.get(Identifier.of("minecraft", itemName));
                                         compositeContents.add(new SlotDisplay.ItemSlotDisplay(item));
+                                        System.out.println("Добавлен ItemSlotDisplay: " + itemName);
                                     }
                                 }
                             }
                             slots.add(new SlotDisplay.CompositeSlotDisplay(compositeContents));
+                        } else {
+                            System.out.println("Не удалось найти contents для CompositeSlotDisplay в: " + rawSlot);
                         }
                     }
                 }
