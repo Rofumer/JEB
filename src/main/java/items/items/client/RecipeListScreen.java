@@ -45,6 +45,7 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import static items.items.client.RecipeLoader.loadRecipesFromLog;
 import static net.minecraft.client.recipebook.RecipeBookType.CRAFTING;
@@ -188,12 +189,9 @@ public class RecipeListScreen extends Screen {
                                 //System.out.println("Crafting Requirements:");
 
                                 for (Ingredient ingredient : ingredients) {
-                                    List<RegistryEntry<Item>> matchingItems = ingredient.getMatchingItems();
-
-                                    //System.out.print("  [" + i + "] = ");
+                                    List<RegistryEntry<Item>> matchingItems = ingredient.getMatchingItems().collect(Collectors.toList());
 
                                     if (matchingItems.isEmpty()) {
-                                        //System.out.println("<пусто>");
                                         entryString.append("<empty>");
                                     } else {
                                         List<String> itemNames = new ArrayList<>();
@@ -205,6 +203,7 @@ public class RecipeListScreen extends Screen {
                                     }
                                     entryString.append(";");
                                 }
+
                             } else {
                                 entryString.append("<empty>");
                             }
