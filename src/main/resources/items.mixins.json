@@ -8,7 +8,8 @@
     "RecipeBookWidgetMixin"
   ],
   "client": [
-    "AnimatedResultButtonMixin"
+    "AnimatedResultButtonMixin",
+    "RecipeBookWidgetAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

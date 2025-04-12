@@ -1,16 +1,13 @@
 package items.items.mixin;
 
+import net.minecraft.client.resource.language.I18n;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.client.gui.screen.recipebook.RecipeBookWidget;
 import net.minecraft.client.gui.screen.recipebook.RecipeBookProvider;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.recipebook.ClientRecipeBook;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.recipe.Ingredient;
@@ -22,9 +19,9 @@ import net.minecraft.recipe.book.RecipeBookCategories;
 import net.minecraft.recipe.book.RecipeBookCategory;
 import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.recipe.display.SlotDisplay;
-import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.tag.TagKey;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -34,6 +31,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.*;
+
+import static net.minecraft.client.resource.language.I18n.translate;
 
 @Mixin(RecipeBookWidget.class)
 public abstract class RecipeBookWidgetMixin {
@@ -69,12 +68,23 @@ public abstract class RecipeBookWidgetMixin {
                                         List<RecipeResultCollection> list,
                                         List<RecipeResultCollection> list2,
                                         String string) {
+
         System.out.println("list2 содержит " + list2.size() + " рецептов");
 
 
+        // Получаем доступ к searchField через наш accessor
+        RecipeBookWidgetAccessor accessor = (RecipeBookWidgetAccessor) this;
+        String searchText = accessor.getSearchField().getText();  // Получаем текст из поля поиска
+
         for (Item item : Registries.ITEM) {
 
+
             if (item == Items.AIR ) { continue; }
+
+            if(!translate(item.getTranslationKey()).toLowerCase().contains(searchText.toLowerCase())) {continue;}
+
+            System.out.println(translate(item.getTranslationKey()));
+                    //getLiteralString().toUpperCase(Locale.of(MinecraftClient.getInstance().getLanguageManager().getLanguage())));
 
         NetworkRecipeId recipeId = new NetworkRecipeId(9999);
         // Пример добавления кастомного рецепта (если есть подходящий объект)
@@ -93,7 +103,7 @@ public abstract class RecipeBookWidgetMixin {
         );
 
 
-            System.out.println("Item: " + item);
+            System.out.println("Item: " + Registries.ITEM.getId(item));
 
 
             OptionalInt group = OptionalInt.empty();
@@ -111,6 +121,8 @@ public abstract class RecipeBookWidgetMixin {
             list2.add(myCustomRecipeResultCollection);
         }
         System.out.println("2: list2 содержит " + list2.size() + " рецептов");
+        System.out.println("Текст в поисковом поле: " + searchText);
+
     }
 
 }
