@@ -1,6 +1,7 @@
 package items.items.mixin;
 
-
+import net.minecraft.item.Item;
+import net.minecraft.registry.Registries;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.client.gui.screen.recipebook.RecipeBookWidget;
@@ -70,35 +71,45 @@ public abstract class RecipeBookWidgetMixin {
                                         String string) {
         System.out.println("list2 содержит " + list2.size() + " рецептов");
 
+
+        for (Item item : Registries.ITEM) {
+
+            if (item == Items.AIR ) { continue; }
+
         NetworkRecipeId recipeId = new NetworkRecipeId(9999);
         // Пример добавления кастомного рецепта (если есть подходящий объект)
         //Display:ShapelessCraftingRecipeDisplay[ingredients=[TagSlotDisplay[tag=TagKey[minecraft:item / minecraft:acacia_logs]]], result=StackSlotDisplay[stack=4 minecraft:acacia_planks], craftingStation=ItemSlotDisplay[item=Reference{ResourceKey[minecraft:item / minecraft:crafting_table]=minecraft:crafting_table}]];Category:Optional[ResourceKey[minecraft:recipe_book_category / minecraft:crafting_building_blocks]];NetworkID:NetworkRecipeId[index=7];Group:OptionalInt[7];Crafting Requirements Items:minecraft:acacia_log, minecraft:acacia_wood, minecraft:stripped_acacia_log, minecraft:stripped_acacia_wood;
 
         List<SlotDisplay> slots = new ArrayList<>();
 
-        slots.add(new SlotDisplay.TagSlotDisplay(TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", "cobblestone"))));
+        slots.add(new SlotDisplay.TagSlotDisplay(TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", Registries.ITEM.getId(item).getPath()))));
 
         SlotDisplay.StackSlotDisplay resultSlot = new SlotDisplay.StackSlotDisplay(
-                new ItemStack(Registries.ITEM.get(Identifier.of("minecraft", "cobblestone")), 1)
+                new ItemStack(Registries.ITEM.get(Identifier.of("minecraft",Registries.ITEM.getId(item).getPath())), 1)
         );
 
         SlotDisplay.ItemSlotDisplay stationSlot = new SlotDisplay.ItemSlotDisplay(
                 Registries.ITEM.get(Identifier.of("minecraft", "crafting_table"))
         );
 
-        OptionalInt group = OptionalInt.empty();
 
-        RecipeBookCategory category = RecipeBookCategories.CRAFTING_MISC;
+            System.out.println("Item: " + item);
 
-        List<Ingredient> ingredients = new ArrayList<>();
-        List<Item> alternatives = new ArrayList<>();
-        alternatives.add(Items.COBBLESTONE);
-        ingredients.add(Ingredient.ofItems(alternatives.stream()));
 
-        ShapelessCraftingRecipeDisplay display = new ShapelessCraftingRecipeDisplay(slots, resultSlot, stationSlot);
-        RecipeDisplayEntry recipeDisplayEntry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
-        RecipeResultCollection myCustomRecipeResultCollection = new RecipeResultCollection(List.of(recipeDisplayEntry));
-        list2.add(myCustomRecipeResultCollection);
+            OptionalInt group = OptionalInt.empty();
+
+            RecipeBookCategory category = RecipeBookCategories.CRAFTING_MISC;
+
+            List<Ingredient> ingredients = new ArrayList<>();
+            List<Item> alternatives = new ArrayList<>();
+            alternatives.add(item);
+            ingredients.add(Ingredient.ofItems(alternatives.stream()));
+
+            ShapelessCraftingRecipeDisplay display = new ShapelessCraftingRecipeDisplay(slots, resultSlot, stationSlot);
+            RecipeDisplayEntry recipeDisplayEntry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
+            RecipeResultCollection myCustomRecipeResultCollection = new RecipeResultCollection(List.of(recipeDisplayEntry));
+            list2.add(myCustomRecipeResultCollection);
+        }
         System.out.println("2: list2 содержит " + list2.size() + " рецептов");
     }
 
