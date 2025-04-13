@@ -79,7 +79,7 @@ public class RecipeBookResultsMixin {
 
             RecipeResultCollection myCustomRecipeResultCollection = new RecipeResultCollection(List.of(entry));
 
-            alternatesWidget.showAlternativesForResult(myCustomRecipeResultCollection, contextParameterMap, false, animatedResultButton.getX(), animatedResultButton.getY(), areaLeft + areaWidth / 2, areaTop + 13 + areaHeight / 2, (float) animatedResultButton.getWidth());
+            alternatesWidget.showAlternativesForResult(myCustomRecipeResultCollection, contextParameterMap, false, animatedResultButton.getX()+20, animatedResultButton.getY()+20, areaLeft + areaWidth / 2, areaTop + 13 + areaHeight / 2, (float) animatedResultButton.getWidth());
         }
     }
 
