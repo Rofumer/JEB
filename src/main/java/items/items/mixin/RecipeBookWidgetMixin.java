@@ -3,6 +3,7 @@ package items.items.mixin;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.resource.language.I18n;
 import net.minecraft.item.Item;
+import net.minecraft.recipe.book.RecipeBookGroup;
 import net.minecraft.registry.Registries;
 import net.minecraft.client.gui.screen.recipebook.RecipeBookWidget;
 import net.minecraft.client.gui.screen.recipebook.RecipeBookProvider;
@@ -29,6 +30,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
@@ -127,5 +129,7 @@ public abstract class RecipeBookWidgetMixin {
         System.out.println("Текст в поисковом поле: " + searchText);
 
     }
+
+
 
 }

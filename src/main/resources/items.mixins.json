@@ -11,7 +11,8 @@
   "client": [
     "AnimatedResultButtonMixin",
     "RecipeAlternativesWidgetMixin",
-    "RecipeBookWidgetAccessor"
+    "RecipeBookWidgetAccessor",
+    "RecipeResultCollectionMixin"
   ],
   "injectors": {
     "defaultRequire": 1
