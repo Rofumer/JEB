@@ -1,11 +1,15 @@
 package items.items.mixin;
 
-import net.minecraft.client.gui.screen.recipebook.AnimatedResultButton;
-import net.minecraft.client.gui.screen.recipebook.RecipeAlternativesWidget;
-import net.minecraft.client.gui.screen.recipebook.RecipeBookResults;
-import net.minecraft.client.gui.screen.recipebook.RecipeBookWidget;
+import items.items.accessor.ClientRecipeBookAccessor;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.recipebook.*;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.recipebook.ClientRecipeBook;
+import net.minecraft.item.ItemStack;
+import net.minecraft.recipe.NetworkRecipeId;
+import net.minecraft.recipe.RecipeDisplayEntry;
 import net.minecraft.util.context.ContextParameterMap;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
@@ -17,13 +21,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 @Mixin(RecipeBookResults.class)
 public class RecipeBookResultsMixin {
 
-    @Shadow private RecipeBookWidget<?> recipeBookWidget;
-    @Shadow private RecipeAlternativesWidget alternatesWidget;
+    @Shadow
+    private RecipeBookWidget<?> recipeBookWidget;
+    @Shadow
+    private RecipeAlternativesWidget alternatesWidget;
 
+
+    @Shadow
+    @Nullable
+    private RecipeResultCollection resultCollection;
 
     @Inject(
             method = "mouseClicked",
@@ -54,7 +66,21 @@ public class RecipeBookResultsMixin {
         }
 
         if (button == 0) {
-            alternatesWidget.showAlternativesForResult(animatedResultButton.getResultCollection(), contextParameterMap, false, animatedResultButton.getX(), animatedResultButton.getY(), areaLeft + areaWidth / 2, areaTop + 13 + areaHeight / 2, (float)animatedResultButton.getWidth());
+
+
+            System.out.println(animatedResultButton.getCurrentId().toString());
+
+            MinecraftClient client = MinecraftClient.getInstance();
+            ClientRecipeBook recipeBook = client.player.getRecipeBook();
+
+            Map<NetworkRecipeId, RecipeDisplayEntry> recipes = ((ClientRecipeBookAccessor) recipeBook).getRecipes();
+
+            RecipeDisplayEntry entry = recipes.get(animatedResultButton.getCurrentId());
+
+            RecipeResultCollection myCustomRecipeResultCollection = new RecipeResultCollection(List.of(entry));
+
+            alternatesWidget.showAlternativesForResult(myCustomRecipeResultCollection, contextParameterMap, false, animatedResultButton.getX(), animatedResultButton.getY(), areaLeft + areaWidth / 2, areaTop + 13 + areaHeight / 2, (float) animatedResultButton.getWidth());
         }
     }
+
 }

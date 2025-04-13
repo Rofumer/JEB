@@ -5,11 +5,12 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ClientRecipeBookMixin",
-    "RecipeBookWidgetMixin",
-    "RecipeBookResultsMixin"
+    "RecipeBookResultsMixin",
+    "RecipeBookWidgetMixin"
   ],
   "client": [
     "AnimatedResultButtonMixin",
+    "RecipeAlternativesWidgetMixin",
     "RecipeBookWidgetAccessor"
   ],
   "injectors": {
