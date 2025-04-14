@@ -8,6 +8,9 @@ import net.minecraft.client.recipebook.ClientRecipeBook;
 import net.minecraft.item.ItemStack;
 import net.minecraft.recipe.NetworkRecipeId;
 import net.minecraft.recipe.RecipeDisplayEntry;
+import net.minecraft.recipe.display.SlotDisplay;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.context.ContextParameterMap;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
@@ -22,6 +25,7 @@ import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Mixin(RecipeBookResults.class)
@@ -56,14 +60,21 @@ public class RecipeBookResultsMixin {
             AnimatedResultButton animatedResultButton
     ) {
         if (button == 1) {
-            // Изменяем текст поиска
-            ((RecipeBookWidgetAccessor) recipeBookWidget).getSearchField().setText("cobblestone");
+            ItemStack stack = animatedResultButton.getDisplayStack();
+            String itemName = stack.getItem().getName().getString(); // Локализованное имя (например, "Булыжник")
+            String searchText = "#" + itemName.toLowerCase(Locale.ROOT);
 
-            // Вызываем reset()
-            ((RecipeBookWidgetAccessor) recipeBookWidget).invokeReset();
+// Устанавливаем в поиск
+            ((RecipeBookWidgetAccessor) recipeBookWidget).getSearchField().setText(searchText);
+                    ((RecipeBookWidgetAccessor) recipeBookWidget).invokeReset();
 
-            cir.setReturnValue(true); // чтобы остановить дальнейшую обработку
-        }
+                    cir.setReturnValue(true);
+                }
+
+
+
+
+
 
         if (button == 0) {
 

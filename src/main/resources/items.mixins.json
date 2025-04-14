@@ -12,6 +12,7 @@
     "AnimatedResultButtonMixin",
     "RecipeAlternativesWidgetMixin",
     "RecipeBookWidgetAccessor",
+    "RecipeBookWidgetSearchMixin",
     "RecipeResultCollectionMixin"
   ],
   "injectors": {
