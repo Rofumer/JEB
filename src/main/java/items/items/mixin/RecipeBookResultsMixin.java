@@ -59,39 +59,44 @@ public class RecipeBookResultsMixin {
             Iterator<AnimatedResultButton> iterator,
             AnimatedResultButton animatedResultButton
     ) {
-        if (button == 1) {
-            ItemStack stack = animatedResultButton.getDisplayStack();
-            String itemName = stack.getItem().getName().getString(); // Локализованное имя (например, "Булыжник")
-            String searchText = "#" + itemName.toLowerCase(Locale.ROOT);
+
+        if (animatedResultButton.mouseClicked(mouseX, mouseY, button)) {
+
+            if (button == 1) {
+                ItemStack stack = animatedResultButton.getDisplayStack();
+                String itemName = stack.getItem().getName().getString(); // Локализованное имя (например, "Булыжник")
+                String searchText = "#" + itemName.toLowerCase(Locale.ROOT);
 
 // Устанавливаем в поиск
-            ((RecipeBookWidgetAccessor) recipeBookWidget).getSearchField().setText(searchText);
-                    ((RecipeBookWidgetAccessor) recipeBookWidget).invokeReset();
+                ((RecipeBookWidgetAccessor) recipeBookWidget).getSearchField().setText(searchText);
+                ((RecipeBookWidgetAccessor) recipeBookWidget).invokeReset();
 
-                    cir.setReturnValue(true);
+                cir.setReturnValue(true);
+            }
+
+
+            if (button == 0) {
+
+
+                System.out.println(animatedResultButton.getCurrentId().toString());
+
+                MinecraftClient client = MinecraftClient.getInstance();
+                ClientRecipeBook recipeBook = client.player.getRecipeBook();
+
+                Map<NetworkRecipeId, RecipeDisplayEntry> recipes = ((ClientRecipeBookAccessor) recipeBook).getRecipes();
+
+                RecipeDisplayEntry entry = recipes.get(animatedResultButton.getCurrentId());
+
+                if(entry != null) {
+
+                    RecipeResultCollection myCustomRecipeResultCollection = new RecipeResultCollection(List.of(entry));
+
+                    alternatesWidget.showAlternativesForResult(myCustomRecipeResultCollection, contextParameterMap, false, animatedResultButton.getX(), animatedResultButton.getY(), areaLeft + areaWidth / 2, areaTop + 13 + areaHeight / 2, (float) animatedResultButton.getWidth());
+
                 }
-
-
-
-
-
-
-        if (button == 0) {
-
-
-            System.out.println(animatedResultButton.getCurrentId().toString());
-
-            MinecraftClient client = MinecraftClient.getInstance();
-            ClientRecipeBook recipeBook = client.player.getRecipeBook();
-
-            Map<NetworkRecipeId, RecipeDisplayEntry> recipes = ((ClientRecipeBookAccessor) recipeBook).getRecipes();
-
-            RecipeDisplayEntry entry = recipes.get(animatedResultButton.getCurrentId());
-
-            RecipeResultCollection myCustomRecipeResultCollection = new RecipeResultCollection(List.of(entry));
-
-            alternatesWidget.showAlternativesForResult(myCustomRecipeResultCollection, contextParameterMap, false, animatedResultButton.getX()+20, animatedResultButton.getY()+20, areaLeft + areaWidth / 2, areaTop + 13 + areaHeight / 2, (float) animatedResultButton.getWidth());
+            }
         }
+
     }
 
 }
