@@ -59,6 +59,8 @@ public class RecipeListScreen extends Screen {
         super(Text.of("Recipe List"));
     }
 
+    static public Boolean sent = false;
+
     @Override
     protected void init() {
         super.init();
@@ -118,12 +120,12 @@ public class RecipeListScreen extends Screen {
         }
     }
 
-    private void loadAllRecipes() throws InterruptedException {
+    public void loadAllRecipes() throws InterruptedException {
         // Запускаем задачу в отдельном потоке, чтобы не блокировать главный поток
 
         try {
 
-            loadRecipesFromLog(new File("recipes_output.txt"));
+            loadRecipesFromLog();
 
             // Здесь можно добавить логику для получения всех рецептов или другого действия
             // Например, задержка, чтобы увидеть результат

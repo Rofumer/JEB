@@ -12,6 +12,19 @@ public class ItemsClient implements ClientModInitializer {
     public void onInitializeClient() {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+
+            RecipeListScreen recipeListScreen = new RecipeListScreen();
+
+            if (client.player != null && !RecipeListScreen.sent) {
+                try {
+                    RecipeListScreen.sent = true;
+                    recipeListScreen.loadAllRecipes();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+
+            }
+
             if (waitingForR) {
                 // Добавляем небольшую задержку, чтобы избежать чрезмерной нагрузки
                 if (org.lwjgl.glfw.GLFW.glfwGetKey(client.getWindow().getHandle(), GLFW.GLFW_KEY_R) == GLFW.GLFW_PRESS) {
@@ -27,6 +40,5 @@ public class ItemsClient implements ClientModInitializer {
                 }
             }
         });
-
     }
 }

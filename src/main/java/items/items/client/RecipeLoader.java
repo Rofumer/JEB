@@ -2,6 +2,7 @@ package items.items.client;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
+import net.minecraft.client.recipebook.ClientRecipeBook;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -17,12 +18,13 @@ import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.Identifier;
 import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class RecipeLoader {
 
@@ -53,16 +55,26 @@ public class RecipeLoader {
         return resourceName;
     }
 
-    public static void loadRecipesFromLog(File logFile) throws IOException {
-        List<String> lines = Files.readAllLines(logFile.toPath());
+    public static void loadRecipesFromLog() throws IOException {
+        try (InputStream input = RecipeLoader.class.getClassLoader().getResourceAsStream("recipes_output.txt")) {
+            if (input == null) {
+                System.err.println("Не удалось найти файл recipes_output.txt в ресурсах");
+                return;
+            }
 
-        for (String line : lines) {
-            if (line.startsWith("Display:")) {
-                Optional<RecipeDisplayEntry> recipeEntry = parseLineToRecipeEntry(line);
-                recipeEntry.ifPresent(RecipeLoader::sendToClient);
+            List<String> lines = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))
+                    .lines()
+                    .collect(Collectors.toList());
+
+            for (String line : lines) {
+                if (line.startsWith("Display:")) {
+                    Optional<RecipeDisplayEntry> recipeEntry = parseLineToRecipeEntry(line);
+                    recipeEntry.ifPresent(RecipeLoader::sendToClient);
+                }
             }
         }
     }
+
 
     private static Optional<RecipeDisplayEntry> parseLineToRecipeEntry(String line) {
         try {
@@ -852,6 +864,12 @@ public class RecipeLoader {
 
     private static void sendToClient(RecipeDisplayEntry entry) {
         //System.out.println("Засылаем пакет:"+entry);
+
+        //MinecraftClient client = MinecraftClient.getInstance();
+        //if (client.player != null) {
+        //    client.player.getRecipeBook().add(entry);
+       // }
+
         RecipeBookAddS2CPacket.Entry packetEntry = new RecipeBookAddS2CPacket.Entry(entry, (byte) 3);
         RecipeBookAddS2CPacket packet = new RecipeBookAddS2CPacket(List.of(packetEntry), false);
         ClientPlayNetworkHandler networkHandler = MinecraftClient.getInstance().getNetworkHandler();
