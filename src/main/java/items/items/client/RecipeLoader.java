@@ -6,6 +6,7 @@ import net.minecraft.client.recipebook.ClientRecipeBook;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.item.equipment.trim.ArmorTrimPattern;
 import net.minecraft.recipe.Ingredient;
 import net.minecraft.recipe.NetworkRecipeId;
 import net.minecraft.recipe.RecipeDisplayEntry;
@@ -13,7 +14,9 @@ import net.minecraft.recipe.book.RecipeBookCategory;
 import net.minecraft.recipe.book.RecipeBookCategories;
 import net.minecraft.recipe.display.*;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.Identifier;
 import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
@@ -25,6 +28,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static com.mojang.datafixers.TypeRewriteRule.orElse;
 
 public class RecipeLoader {
 
@@ -183,73 +188,81 @@ public class RecipeLoader {
 // Извлекаем тип отображения
             if (line.contains("SmithingRecipeDisplay")) {
 
-                // Получаем индекс
                 Matcher idMatcher = Pattern.compile("NetworkID:NetworkRecipeId\\[index=(\\d+)]").matcher(line);
                 int index = idMatcher.find() ? Integer.parseInt(idMatcher.group(1)) : -1;
 
-                // Получаем группу (если есть)
                 OptionalInt group = OptionalInt.empty();
                 Matcher groupMatcher = Pattern.compile("Group:OptionalInt\\[(\\d+)]").matcher(line);
                 if (groupMatcher.find()) {
-                    int groupValue = Integer.parseInt(groupMatcher.group(1));
-                    group = OptionalInt.of(groupValue);
+                    group = OptionalInt.of(Integer.parseInt(groupMatcher.group(1)));
                 }
 
-                // Получаем категорию
                 Matcher categoryMatcher = Pattern.compile("Category:Optional\\[ResourceKey\\[minecraft:recipe_book_category / minecraft:(\\w+)]]").matcher(line);
                 RecipeBookCategory category = categoryMatcher.find()
                         ? Registries.RECIPE_BOOK_CATEGORY.get(Identifier.of("minecraft", categoryMatcher.group(1)))
                         : RecipeBookCategories.CRAFTING_MISC;
 
-                // Получаем ингредиенты для шаблона, базы и добавления
                 Matcher templateMatcher = Pattern.compile("template=CompositeSlotDisplay\\[contents=\\[ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:(.*?)\\]=minecraft:(.*?)\\}\\]\\]]").matcher(line);
-                String templateItem = templateMatcher.find() ? fixResourceName(templateMatcher.group(2)) : null;
+                String templateItem = templateMatcher.find() ? fixResourceName(templateMatcher.group(2)) : "air";
 
-                // Получаем базовый элемент (base)
                 String baseItem = null;
-                Matcher baseMatcher = Pattern.compile("base=CompositeSlotDisplay\\[contents=\\[ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:(.*?)\\]=minecraft:(.*?)\\}\\]\\]]").matcher(line);
+                Matcher baseMatcher = Pattern.compile("base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:(.*?)\\]\\]").matcher(line);
                 if (baseMatcher.find()) {
-                    baseItem = fixResourceName(baseMatcher.group(2));
-                } else {
-                    // Если не нашли в CompositeSlotDisplay, проверяем для TagSlotDisplay
-                    Matcher tagBaseMatcher = Pattern.compile("base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:(.*?)\\]\\]").matcher(line);
-                    baseItem = tagBaseMatcher.find() ? fixResourceName(tagBaseMatcher.group(1)) : null;
+                    baseItem = fixResourceName(baseMatcher.group(1));
                 }
+                if (baseItem == null) baseItem = "air";
 
-                // Если baseItem все еще null, значит нет базового элемента, пропускаем его
-                if (baseItem == null) {
-                    baseItem = "minecraft:air"; // или можно поставить null, если не хотите добавлять базовый элемент
-                }
-
-                // Получаем добавление (addition)
                 String additionTag = null;
                 Matcher additionMatcher = Pattern.compile("addition=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:(.*?)\\]\\]").matcher(line);
-                additionTag = additionMatcher.find() ? fixResourceName(additionMatcher.group(1)) : "minecraft:air"; // аналогично baseItem
+                additionTag = additionMatcher.find() ? fixResourceName(additionMatcher.group(1)) : "air";
 
-                // Получаем результат (результат может быть как StackSlotDisplay, так и SmithingTrimSlotDisplay)
-                Matcher resultMatcher = Pattern.compile("result=StackSlotDisplay\\[stack=(\\d+) minecraft:(\\w+)]").matcher(line);
-                Matcher trimResultMatcher = Pattern.compile("result=SmithingTrimSlotDisplay\\[base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],.*?material=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\]").matcher(line);
+                // Результат: SmithingTrimSlotDisplay c pattern=id("...")
+                SlotDisplay.SmithingTrimSlotDisplay resultSlot = null;
+                Pattern trimPattern = Pattern.compile(
+                        "result=SmithingTrimSlotDisplay\\[base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*material=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*pattern=Reference\\{ResourceKey\\[minecraft:trim_pattern / minecraft:([\\w_]+)\\]=ArmorTrimPattern\\[assetId=minecraft:([\\w_]+),\\s*description=translation\\{key='trim_pattern\\.minecraft\\.([\\w_]+)',\\s*args=\\[\\]\\},\\s*decal=false\\]\\}\\]"
+                );
+                Matcher trimResultMatcher = trimPattern.matcher(line);
 
-                String resultItem = null;
-                int resultCount = 1; // По умолчанию результат = 1
 
                 if (trimResultMatcher.find()) {
-                    resultItem = trimResultMatcher.group(1);  // Извлекаем item из SmithingTrimSlotDisplay
-                    System.out.println("resultItem (SmithingTrimSlotDisplay): " + resultItem);
-                }
-                else if (resultMatcher.find()) {
-                    resultCount = Integer.parseInt(resultMatcher.group(1));
-                    resultItem = fixResourceName(resultMatcher.group(2));
-                } else {
-                    resultItem = "minecraft:air"; // если не найден результат, ставим "air"
+                    String baseTag = trimResultMatcher.group(1);
+                    String materialTag = trimResultMatcher.group(2);
+                    String patternId = trimResultMatcher.group(3);
+
+                    TagKey<Item> baseTagKey = TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", baseTag));
+                    TagKey<Item> materialTagKey = TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", materialTag));
+                    // Получаем реестр для ArmorTrimPattern
+                    Registry<ArmorTrimPattern> trimPatternRegistry = MinecraftClient.getInstance().world
+                            .getRegistryManager()
+                            .getOrThrow(RegistryKeys.TRIM_PATTERN);
+
+// Извлекаем RegistryEntry по идентификатору
+                    RegistryEntry<ArmorTrimPattern> patternEntry = trimPatternRegistry.getEntry(Identifier.of("minecraft", patternId))
+                            .orElse(null); // Возвращаем null, если не найдено
+
+// В случае, если entry найдено, можно работать с patternEntry
+                    if (patternEntry != null) {
+                        ArmorTrimPattern pattern = patternEntry.value();
+                        // Работать с pattern, например, получить его описание или assetId
+                    }
+
+
+                    if (patternEntry != null) {
+                        SlotDisplay.SmithingTrimSlotDisplay trim = new SlotDisplay.SmithingTrimSlotDisplay(
+                                new SlotDisplay.TagSlotDisplay(baseTagKey),
+                                new SlotDisplay.TagSlotDisplay(materialTagKey),
+                                patternEntry
+                        );
+                        resultSlot = trim;
+                    }
                 }
 
-                // Получаем станцию
+                if (resultSlot == null) return Optional.empty();
+
                 Matcher stationMatcher = Pattern.compile("craftingStation=ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:(.*?)\\]=minecraft:(.*?)\\}\\]").matcher(line);
                 if (!stationMatcher.find()) return Optional.empty();
                 String stationName = fixResourceName(stationMatcher.group(2));
 
-                // Получаем Crafting Requirements Items
                 Matcher itemsMatcher = Pattern.compile("Crafting Requirements Items:(.*)").matcher(line);
                 if (!itemsMatcher.find()) return Optional.empty();
 
@@ -257,8 +270,7 @@ public class RecipeLoader {
                 List<Ingredient> ingredients = new ArrayList<>();
 
                 for (String rawItem : itemsSection.split(";")) {
-                    List<Item> alternatives = new ArrayList<>(); // <- варианты для одного ингредиента
-
+                    List<Item> alternatives = new ArrayList<>();
                     for (String itemVariant : rawItem.split(",")) {
                         String itemName = itemVariant.trim();
                         if (!itemName.isBlank()) {
@@ -267,36 +279,31 @@ public class RecipeLoader {
                             String path = splitItem[splitItem.length - 1];
                             Identifier id = Identifier.of(namespace, path);
                             Item item = Registries.ITEM.get(id);
-                            if (item != Items.AIR) { // для надёжности
+                            if (item != Items.AIR) {
                                 alternatives.add(item);
                             }
                         }
                     }
-
                     if (!alternatives.isEmpty()) {
                         ingredients.add(Ingredient.ofItems(alternatives.stream()));
                     }
                 }
 
-                // Собираем объект рецепта
                 SlotDisplay.ItemSlotDisplay templateSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", templateItem)));
                 SlotDisplay.ItemSlotDisplay baseSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", baseItem)));
                 SlotDisplay.ItemSlotDisplay additionSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", additionTag)));
-                SlotDisplay.StackSlotDisplay resultSlot = new SlotDisplay.StackSlotDisplay(
-                        new ItemStack(Registries.ITEM.get(Identifier.of("minecraft", resultItem)), resultCount)
-                );
                 SlotDisplay.ItemSlotDisplay stationSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", stationName)));
 
-                // Собираем объект рецепта
                 NetworkRecipeId recipeId = new NetworkRecipeId(index);
                 SmithingRecipeDisplay display = new SmithingRecipeDisplay(
                         templateSlot, baseSlot, additionSlot, resultSlot, stationSlot
                 );
 
                 RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
-
                 return Optional.of(entry);
             }
+
+
 
 
             if (line.contains("FurnaceRecipeDisplay")) {
