@@ -5,8 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ClientRecipeBookMixin",
-    "RecipeBookResultsMixin",
-    "RecipeBookWidgetMixin"
+    "RecipeBookResultsMixin"
   ],
   "client": [
     "AnimatedResultButtonMixin",

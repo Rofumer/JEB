@@ -24,10 +24,12 @@ import net.minecraft.recipe.book.RecipeBookCategory;
 import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.recipe.display.SlotDisplay;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
@@ -86,10 +88,10 @@ public abstract class RecipeBookWidgetMixin {
         Set<Item> existingResultItems = new HashSet<>();
         for (RecipeResultCollection collection : list2) {
             for (RecipeDisplayEntry entry : collection.getAllRecipes()) {
-                SlotDisplay.StackSlotDisplay result = (SlotDisplay.StackSlotDisplay) entry.display().result();
-                existingResultItems.add(result.stack().getItem());
+                getItemFromSlotDisplay(entry.display().result()).ifPresent(existingResultItems::add);
             }
         }
+
 
         for (Item item : Registries.ITEM) {
             if (item == Items.AIR) continue;
@@ -123,10 +125,75 @@ public abstract class RecipeBookWidgetMixin {
             list2.add(myCustomRecipeResultCollection);
         }
 
+        if (!searchText.isEmpty()) {
+            for (Item item : Registries.ITEM) {
+                if (item == Items.AIR) continue;
+                if (existingResultItems.contains(item)) continue;
+
+                Identifier id = Registries.ITEM.getId(item);
+                String idString = id.toString().toLowerCase(); // без Locale
+                String name = item.getName().getString().toLowerCase(); // без Locale
+                String searchLower = searchText.toLowerCase(); // без Locale
+
+                // Если id или имя содержит текст поиска
+                if (!idString.contains(searchLower) && !name.contains(searchLower)) continue;
+
+                NetworkRecipeId recipeId = new NetworkRecipeId(9999);
+
+                List<SlotDisplay> slots = List.of(
+                        new SlotDisplay.TagSlotDisplay(TagKey.of(RegistryKeys.ITEM, id))
+                );
+
+                SlotDisplay.StackSlotDisplay resultSlot = new SlotDisplay.StackSlotDisplay(new ItemStack(item));
+                SlotDisplay.ItemSlotDisplay stationSlot = new SlotDisplay.ItemSlotDisplay(Items.CRAFTING_TABLE);
+
+                ShapelessCraftingRecipeDisplay display = new ShapelessCraftingRecipeDisplay(slots, resultSlot, stationSlot);
+
+                OptionalInt group = OptionalInt.empty();
+                RecipeBookCategory category = RecipeBookCategories.CRAFTING_MISC;
+                List<Ingredient> ingredients = List.of(Ingredient.ofItems(item));
+
+                RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
+                RecipeResultCollection resultCollection = new RecipeResultCollection(List.of(entry));
+
+                list2.add(resultCollection);
+            }
+        }
+
+
+
         System.out.println("2: list2 содержит " + list2.size() + " рецептов");
         System.out.println("Текст в поисковом поле: " + searchText);
     }
 
+
+    @Unique
+    private static Optional<Item> getItemFromSlotDisplay(SlotDisplay slot) {
+        if (slot instanceof SlotDisplay.StackSlotDisplay(ItemStack stack)) {
+            return Optional.of(stack.getItem());
+        }
+
+        if (slot instanceof SlotDisplay.ItemSlotDisplay(RegistryEntry<Item> item)) {
+            return Optional.of(item.value());
+        }
+
+        if (slot instanceof SlotDisplay.TagSlotDisplay(TagKey<Item> tag)) {
+
+            // В 1.21.5 можно безопасно использовать iterateEntries
+            for (RegistryEntry<Item> entry : Registries.ITEM.iterateEntries(tag)) {
+                return Optional.of(entry.value());
+            }
+        }
+
+        if (slot instanceof SlotDisplay.CompositeSlotDisplay(List<SlotDisplay> contents)) {
+            for (SlotDisplay inner : contents) {
+                Optional<Item> maybeItem = getItemFromSlotDisplay(inner);
+                if (maybeItem.isPresent()) return maybeItem;
+            }
+        }
+
+        return Optional.empty();
+    }
 
 
 
