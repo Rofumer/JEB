@@ -13,7 +13,7 @@ public class ItemsClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
-            RecipeListScreen recipeListScreen = new RecipeListScreen();
+            /*RecipeListScreen recipeListScreen = new RecipeListScreen();
 
             if (client.player != null && !RecipeListScreen.sent) {
                 try {
@@ -23,7 +23,7 @@ public class ItemsClient implements ClientModInitializer {
                     throw new RuntimeException(e);
                 }
 
-            }
+            }*/
 
             if (waitingForR) {
                 // Добавляем небольшую задержку, чтобы избежать чрезмерной нагрузки
