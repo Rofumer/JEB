@@ -202,27 +202,64 @@ public class RecipeLoader {
                         ? Registries.RECIPE_BOOK_CATEGORY.get(Identifier.of("minecraft", categoryMatcher.group(1)))
                         : RecipeBookCategories.CRAFTING_MISC;
 
+                // Обработка template как CompositeSlotDisplay
                 Matcher templateMatcher = Pattern.compile("template=CompositeSlotDisplay\\[contents=\\[ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:(.*?)\\]=minecraft:(.*?)\\}\\]\\]]").matcher(line);
                 String templateItem = templateMatcher.find() ? fixResourceName(templateMatcher.group(2)) : "air";
 
                 String baseItem = null;
-                Matcher baseMatcher = Pattern.compile("base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:(.*?)\\]\\]").matcher(line);
+                boolean isBaseTag = false;
+
+                Matcher baseMatcher = Pattern.compile(
+                        "base=(?:CompositeSlotDisplay\\[contents=\\[ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:[^\\]]+\\]=minecraft:([^}\\]]+)\\}\\]\\]\\]|TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([^\\]]+)\\]\\])"
+                ).matcher(line);
+
                 if (baseMatcher.find()) {
-                    baseItem = fixResourceName(baseMatcher.group(1));
+                    if (baseMatcher.group(1) != null) {
+                        baseItem = fixResourceName(baseMatcher.group(1)); // это предмет
+                        isBaseTag = true;
+                    } else if (baseMatcher.group(2) != null) {
+                        baseItem = baseMatcher.group(2); // это тег
+                        isBaseTag = false;
+                    }
                 }
-                if (baseItem == null) baseItem = "air";
 
+                if (baseItem == null) {
+                    baseItem = "air";
+                    isBaseTag = false;
+                }
+
+// Обработка addition как тега или предмета
                 String additionTag = null;
-                Matcher additionMatcher = Pattern.compile("addition=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:(.*?)\\]\\]").matcher(line);
-                additionTag = additionMatcher.find() ? fixResourceName(additionMatcher.group(1)) : "air";
+                Matcher additionMatcher = Pattern.compile(
+                        "addition=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:(.*?)\\]\\]"
 
-                // Результат: SmithingTrimSlotDisplay c pattern=id("...")
+
+                ).matcher(line);
+
+                if (additionMatcher.find()) {
+                    if (additionMatcher.group(1) != null) {
+                        if (additionMatcher.group(1).contains("TagSlotDisplay")) {
+                            additionTag = additionMatcher.group(1); // Это тег
+                        } else {
+                            additionTag = fixResourceName(additionMatcher.group(1)); // Это обычный предмет
+                        }
+                    } else if (additionMatcher.group(3) != null) {
+                        if (additionMatcher.group(3).contains("TagSlotDisplay")) {
+                            additionTag = additionMatcher.group(3); // Это тег
+                        } else {
+                            additionTag = fixResourceName(additionMatcher.group(3)); // Это обычный предмет
+                        }
+                    }
+                }
+                if (additionTag == null) additionTag = "air";
+
+
+                // Результат: SmithingTrimSlotDisplay с pattern
                 SlotDisplay.SmithingTrimSlotDisplay resultSlot = null;
                 Pattern trimPattern = Pattern.compile(
                         "result=SmithingTrimSlotDisplay\\[base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*material=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*pattern=Reference\\{ResourceKey\\[minecraft:trim_pattern / minecraft:([\\w_]+)\\]=ArmorTrimPattern\\[assetId=minecraft:([\\w_]+),\\s*description=translation\\{key='trim_pattern\\.minecraft\\.([\\w_]+)',\\s*args=\\[\\]\\},\\s*decal=false\\]\\}\\]"
                 );
                 Matcher trimResultMatcher = trimPattern.matcher(line);
-
 
                 if (trimResultMatcher.find()) {
                     String baseTag = trimResultMatcher.group(1);
@@ -236,16 +273,9 @@ public class RecipeLoader {
                             .getRegistryManager()
                             .getOrThrow(RegistryKeys.TRIM_PATTERN);
 
-// Извлекаем RegistryEntry по идентификатору
+                    // Извлекаем RegistryEntry по идентификатору
                     RegistryEntry<ArmorTrimPattern> patternEntry = trimPatternRegistry.getEntry(Identifier.of("minecraft", patternId))
                             .orElse(null); // Возвращаем null, если не найдено
-
-// В случае, если entry найдено, можно работать с patternEntry
-                    if (patternEntry != null) {
-                        ArmorTrimPattern pattern = patternEntry.value();
-                        // Работать с pattern, например, получить его описание или assetId
-                    }
-
 
                     if (patternEntry != null) {
                         SlotDisplay.SmithingTrimSlotDisplay trim = new SlotDisplay.SmithingTrimSlotDisplay(
@@ -289,21 +319,26 @@ public class RecipeLoader {
                     }
                 }
 
-                SlotDisplay.ItemSlotDisplay templateSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", templateItem)));
-                SlotDisplay.ItemSlotDisplay baseSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", baseItem)));
-                SlotDisplay.ItemSlotDisplay additionSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", additionTag)));
+                // Для base и addition создаем SlotDisplay с учетом того, что они могут быть TagSlotDisplay или CompositeSlotDisplay
+                SlotDisplay baseSlot = createSlotDisplay(baseItem, isBaseTag);
+                SlotDisplay additionSlot = createSlotDisplay(additionTag, false);
                 SlotDisplay.ItemSlotDisplay stationSlot = new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", stationName)));
 
+                // Формируем рецепт с учетом base и addition как TagSlotDisplay или CompositeSlotDisplay
                 NetworkRecipeId recipeId = new NetworkRecipeId(index);
                 SmithingRecipeDisplay display = new SmithingRecipeDisplay(
-                        templateSlot, baseSlot, additionSlot, resultSlot, stationSlot
+                        new SlotDisplay.CompositeSlotDisplay(
+                                Arrays.asList(new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", templateItem))))
+                        ),
+                        baseSlot,
+                        additionSlot,
+                        resultSlot,
+                        stationSlot
                 );
 
                 RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
                 return Optional.of(entry);
             }
-
-
 
 
             if (line.contains("FurnaceRecipeDisplay")) {
@@ -840,6 +875,25 @@ public class RecipeLoader {
 
 
 
+    // Метод для создания SlotDisplay в зависимости от типа (CompositeSlotDisplay или TagSlotDisplay)
+    private static SlotDisplay createSlotDisplay(String itemOrTag, boolean isBase) {
+        if (itemOrTag.equals("air")) {
+            return new SlotDisplay.ItemSlotDisplay(Items.AIR);
+        }
+
+        // Если это ItemSlotDisplay, используем CompositeSlotDisplay или TagSlotDisplay в зависимости от isBase
+        if (isBase) {
+            // Если base это CompositeSlotDisplay, то возвращаем CompositeSlotDisplay
+            return new SlotDisplay.CompositeSlotDisplay(
+                    Arrays.asList(new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", itemOrTag))))
+            );
+        } else {
+            // Если addition это TagSlotDisplay, то возвращаем TagSlotDisplay
+            return new SlotDisplay.TagSlotDisplay(
+                    TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", itemOrTag))
+            );
+        }
+    }
 
     private static void sendToClient(RecipeDisplayEntry entry) {
         //System.out.println("Засылаем пакет:"+entry);
