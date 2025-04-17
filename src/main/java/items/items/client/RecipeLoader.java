@@ -257,22 +257,32 @@ public class RecipeLoader {
                 SlotDisplay resultSlot = null;
 
 // Пытаемся распарсить как SmithingTrimSlotDisplay
-                Pattern trimPattern = Pattern.compile(
+                /*Pattern trimPattern = Pattern.compile(
                         "result=SmithingTrimSlotDisplay\\[base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*" +
                                 "material=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*" +
                                 "pattern=Reference\\{ResourceKey\\[minecraft:trim_pattern / minecraft:([\\w_]+)\\]=ArmorTrimPattern\\[assetId=minecraft:([\\w_]+),\\s*" +
                                 "description=translation\\{key='trim_pattern\\.minecraft\\.([\\w_]+)',\\s*args=\\[\\]\\},\\s*decal=false\\]\\}\\]"
+                );*/
+                Pattern trimPattern = Pattern.compile(
+                        "result=SmithingTrimSlotDisplay\\[base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*" +
+                                "material=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*" +
+                                "pattern=(?:Reference\\{ResourceKey\\[minecraft:trim_pattern / minecraft:([\\w_]+)\\]=ArmorTrimPattern\\[assetId=minecraft:([\\w_]+),\\s*" +
+                                "description=translation\\{key='trim_pattern\\.minecraft\\.([\\w_]+)',\\s*args=\\[\\]\\},\\s*decal=false\\]\\}\\]|" +
+                                "CompositeSlotDisplay\\[contents=\\[ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:([\\w_]+)\\]=minecraft:[\\w_]+\\}\\]\\]\\])\\]"
                 );
+
                 Matcher trimResultMatcher = trimPattern.matcher(line);
 
                 if (trimResultMatcher.find()) {
                     String baseTag = trimResultMatcher.group(1);
                     String materialTag = trimResultMatcher.group(2);
+
                     String patternId = trimResultMatcher.group(3);
 
                     TagKey<Item> baseTagKey = TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", baseTag));
                     TagKey<Item> materialTagKey = TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", materialTag));
 
+                    if (trimResultMatcher.group(3) != null) {
                     Registry<ArmorTrimPattern> trimPatternRegistry = MinecraftClient.getInstance().world
                             .getRegistryManager()
                             .getOrThrow(RegistryKeys.TRIM_PATTERN);
@@ -280,13 +290,25 @@ public class RecipeLoader {
                             .getEntry(Identifier.of("minecraft", patternId))
                             .orElse(null);
 
-                    if (patternEntry != null) {
+                    //1.21.5
+                    /*if (patternEntry != null) {
                         resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
                                 new SlotDisplay.TagSlotDisplay(baseTagKey),
                                 new SlotDisplay.TagSlotDisplay(materialTagKey),
                                 patternEntry
                         );
+                    }*/
+                }
+                    //1.21.4
+                    else  {
+                        patternId = trimResultMatcher.group(6);
+                        resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
+                                new SlotDisplay.TagSlotDisplay(baseTagKey),
+                                new SlotDisplay.TagSlotDisplay(materialTagKey),
+                                new SlotDisplay.CompositeSlotDisplay(List.of(new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", patternId))))));
+
                     }
+
                 }
 
 // Если не удалось — пытаемся как StackSlotDisplay
