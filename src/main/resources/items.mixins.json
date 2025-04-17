@@ -12,7 +12,8 @@
     "RecipeAlternativesWidgetMixin",
     "RecipeBookWidgetAccessor",
     "RecipeBookWidgetSearchMixin",
-    "RecipeResultCollectionMixin"
+    "RecipeResultCollectionMixin",
+    "AbstractCraftingRecipeBookWidgetMixin"
   ],
   "injectors": {
     "defaultRequire": 1

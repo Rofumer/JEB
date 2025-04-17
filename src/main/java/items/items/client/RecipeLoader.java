@@ -1,5 +1,6 @@
 package items.items.client;
 
+import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.recipebook.ClientRecipeBook;
@@ -61,9 +62,10 @@ public class RecipeLoader {
     }
 
     public static void loadRecipesFromLog() throws IOException {
-        try (InputStream input = RecipeLoader.class.getClassLoader().getResourceAsStream("recipes_output.txt")) {
+        String name = "recipes_"+SharedConstants.getGameVersion().getName()+".txt";
+        try (InputStream input = RecipeLoader.class.getClassLoader().getResourceAsStream(name)) {
             if (input == null) {
-                System.err.println("Не удалось найти файл recipes_output.txt в ресурсах");
+                System.err.println("Не удалось найти файл "+name+" в ресурсах");
                 return;
             }
 

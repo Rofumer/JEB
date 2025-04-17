@@ -79,8 +79,12 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         RecipeDisplayEntry entry = recipes.get(recipeId);
 
         Screen screen = client.currentScreen;
+
         if (screen instanceof RecipeBookProvider provider && entry != null) {
-            provider.onCraftFailed(entry.display());
+            System.out.println("РецептL " + entry.display().toString());
+            if(!results.isCraftable(recipeId) && recipeId.index()!=9999) {
+                provider.onCraftFailed(entry.display());
+            }
         }
     }
 
