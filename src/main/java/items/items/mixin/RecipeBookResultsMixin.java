@@ -4,12 +4,19 @@ import items.items.accessor.ClientRecipeBookAccessor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.recipebook.*;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.recipebook.ClientRecipeBook;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.c2s.play.RecipeBookDataC2SPacket;
 import net.minecraft.recipe.NetworkRecipeId;
 import net.minecraft.recipe.RecipeDisplayEntry;
+import net.minecraft.recipe.display.RecipeDisplay;
+import net.minecraft.recipe.display.ShapedCraftingRecipeDisplay;
+import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.recipe.display.SlotDisplay;
 import net.minecraft.registry.Registries;
+import net.minecraft.screen.AbstractCraftingScreenHandler;
+import net.minecraft.screen.CraftingScreenHandler;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.context.ContextParameterMap;
 import org.jetbrains.annotations.Nullable;
@@ -35,6 +42,10 @@ public class RecipeBookResultsMixin {
     private RecipeBookWidget<?> recipeBookWidget;
     @Shadow
     private RecipeAlternativesWidget alternatesWidget;
+
+    @Shadow
+    private NetworkRecipeId lastClickedRecipe;
+
 
 
     @Shadow
@@ -72,6 +83,7 @@ public class RecipeBookResultsMixin {
                 ((RecipeBookWidgetAccessor) recipeBookWidget).invokeReset();
 
                 cir.setReturnValue(true);
+                cir.cancel();
             }
 
 
@@ -91,12 +103,40 @@ public class RecipeBookResultsMixin {
 
                     RecipeResultCollection myCustomRecipeResultCollection = new RecipeResultCollection(List.of(entry));
 
-                    alternatesWidget.showAlternativesForResult(myCustomRecipeResultCollection, contextParameterMap, false, animatedResultButton.getX(), animatedResultButton.getY(), areaLeft + areaWidth / 2, areaTop + 13 + areaHeight / 2, (float) animatedResultButton.getWidth());
-
+                    if(!canDisplay(entry.display())) {
+                        alternatesWidget.showAlternativesForResult(myCustomRecipeResultCollection, contextParameterMap, false, animatedResultButton.getX(), animatedResultButton.getY(), areaLeft + areaWidth / 2, areaTop + 13 + areaHeight / 2, (float) animatedResultButton.getWidth());
+                    }
+                    else
+                    {
+                        this.lastClickedRecipe = animatedResultButton.getCurrentId();
+                        this.resultCollection = animatedResultButton.getResultCollection();
+                        recipeBook.unmarkHighlighted(animatedResultButton.getCurrentId());
+                        ClientPlayNetworkHandler networkHandler = MinecraftClient.getInstance().getNetworkHandler();
+                        networkHandler.sendPacket(new RecipeBookDataC2SPacket(animatedResultButton.getCurrentId()));
+                    }
                 }
+
+                cir.setReturnValue(true);
+                cir.cancel();
             }
         }
 
+    }
+
+    private boolean canDisplay(RecipeDisplay display) {
+        RecipeBookWidget<?> widget = this.recipeBookWidget;
+
+        AbstractCraftingScreenHandler handler = (AbstractCraftingScreenHandler) MinecraftClient.getInstance().player.currentScreenHandler;
+
+        //AbstractCraftingScreenHandler handler = ((RecipeBookWidgetAccessor) widget).getCraftingScreenHandler();
+        int i = handler.getWidth();
+        int j = handler.getHeight();
+
+        return switch (display) {
+            case ShapedCraftingRecipeDisplay shaped -> i >= shaped.width() && j >= shaped.height();
+            case ShapelessCraftingRecipeDisplay shapeless -> i * j >= shapeless.ingredients().size();
+            default -> false;
+        };
     }
 
 }
