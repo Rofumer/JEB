@@ -254,10 +254,14 @@ public class RecipeLoader {
                 if (additionTag == null) additionTag = "air";
 
 
-                // Результат: SmithingTrimSlotDisplay с pattern
-                SlotDisplay.SmithingTrimSlotDisplay resultSlot = null;
+                SlotDisplay resultSlot = null;
+
+// Пытаемся распарсить как SmithingTrimSlotDisplay
                 Pattern trimPattern = Pattern.compile(
-                        "result=SmithingTrimSlotDisplay\\[base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*material=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*pattern=Reference\\{ResourceKey\\[minecraft:trim_pattern / minecraft:([\\w_]+)\\]=ArmorTrimPattern\\[assetId=minecraft:([\\w_]+),\\s*description=translation\\{key='trim_pattern\\.minecraft\\.([\\w_]+)',\\s*args=\\[\\]\\},\\s*decal=false\\]\\}\\]"
+                        "result=SmithingTrimSlotDisplay\\[base=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*" +
+                                "material=TagSlotDisplay\\[tag=TagKey\\[minecraft:item / minecraft:([\\w_]+)\\]\\],\\s*" +
+                                "pattern=Reference\\{ResourceKey\\[minecraft:trim_pattern / minecraft:([\\w_]+)\\]=ArmorTrimPattern\\[assetId=minecraft:([\\w_]+),\\s*" +
+                                "description=translation\\{key='trim_pattern\\.minecraft\\.([\\w_]+)',\\s*args=\\[\\]\\},\\s*decal=false\\]\\}\\]"
                 );
                 Matcher trimResultMatcher = trimPattern.matcher(line);
 
@@ -268,22 +272,31 @@ public class RecipeLoader {
 
                     TagKey<Item> baseTagKey = TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", baseTag));
                     TagKey<Item> materialTagKey = TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", materialTag));
-                    // Получаем реестр для ArmorTrimPattern
+
                     Registry<ArmorTrimPattern> trimPatternRegistry = MinecraftClient.getInstance().world
                             .getRegistryManager()
                             .getOrThrow(RegistryKeys.TRIM_PATTERN);
-
-                    // Извлекаем RegistryEntry по идентификатору
-                    RegistryEntry<ArmorTrimPattern> patternEntry = trimPatternRegistry.getEntry(Identifier.of("minecraft", patternId))
-                            .orElse(null); // Возвращаем null, если не найдено
+                    RegistryEntry<ArmorTrimPattern> patternEntry = trimPatternRegistry
+                            .getEntry(Identifier.of("minecraft", patternId))
+                            .orElse(null);
 
                     if (patternEntry != null) {
-                        SlotDisplay.SmithingTrimSlotDisplay trim = new SlotDisplay.SmithingTrimSlotDisplay(
+                        resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
                                 new SlotDisplay.TagSlotDisplay(baseTagKey),
                                 new SlotDisplay.TagSlotDisplay(materialTagKey),
                                 patternEntry
                         );
-                        resultSlot = trim;
+                    }
+                }
+
+// Если не удалось — пытаемся как StackSlotDisplay
+                if (resultSlot == null) {
+                    Pattern stackPattern = Pattern.compile("result=StackSlotDisplay\\[stack=\\d+ minecraft:([\\w_]+)]");
+                    Matcher stackMatcher = stackPattern.matcher(line);
+                    if (stackMatcher.find()) {
+                        String itemId = fixResourceName(stackMatcher.group(1));
+                        Item item = Registries.ITEM.get(Identifier.of("minecraft", itemId));
+                        resultSlot = new SlotDisplay.StackSlotDisplay(new ItemStack(item));
                     }
                 }
 
