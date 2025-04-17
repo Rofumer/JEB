@@ -2,8 +2,12 @@ package items.items.client;
 
 import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.recipebook.RecipeBookProvider;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.recipebook.ClientRecipeBook;
+import net.minecraft.client.search.SearchManager;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -933,16 +937,30 @@ public class RecipeLoader {
     }
 
     private static void sendToClient(RecipeDisplayEntry entry) {
-        //System.out.println("Засылаем пакет:"+entry);
+        System.out.println("Засылаем пакет:"+entry);
 
-        //MinecraftClient client = MinecraftClient.getInstance();
-        //if (client.player != null) {
-        //    client.player.getRecipeBook().add(entry);
-       // }
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player != null) {
 
-        RecipeBookAddS2CPacket.Entry packetEntry = new RecipeBookAddS2CPacket.Entry(entry, (byte) 3);
+            ClientRecipeBook clientRecipeBook = client.player.getRecipeBook();
+            ClientPlayNetworkHandler handler = client.getNetworkHandler();
+            ClientWorld world = client.world;
+
+            clientRecipeBook.add(entry);
+            clientRecipeBook.refresh();
+            handler.getSearchManager().addRecipeOutputReloader(clientRecipeBook, world);
+            Screen var3 = client.currentScreen;
+            if (var3 instanceof RecipeBookProvider recipeBookProvider) {
+                recipeBookProvider.refreshRecipeBook();
+            }
+
+
+
+        }
+
+        /*RecipeBookAddS2CPacket.Entry packetEntry = new RecipeBookAddS2CPacket.Entry(entry, (byte) 3);
         RecipeBookAddS2CPacket packet = new RecipeBookAddS2CPacket(List.of(packetEntry), false);
         ClientPlayNetworkHandler networkHandler = MinecraftClient.getInstance().getNetworkHandler();
-        networkHandler.onRecipeBookAdd(packet);
+        networkHandler.onRecipeBookAdd(packet);*/
     }
 }
