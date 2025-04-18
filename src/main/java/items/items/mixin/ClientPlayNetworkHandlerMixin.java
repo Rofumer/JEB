@@ -106,11 +106,11 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
             if (knownRecipeCount < 1358 && craftingStationId == 259) {
 
-                try {
+                /*try {
                     RecipeLoader.loadRecipesFromLog();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
-                }
+                }*/
 
             }
 
