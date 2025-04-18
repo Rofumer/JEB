@@ -1,6 +1,7 @@
 package items.items.mixin;
 
 import items.items.accessor.ClientRecipeBookAccessor;
+import items.items.client.ItemsClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.recipebook.*;
 import net.minecraft.item.Items;
@@ -213,17 +214,18 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         // Получаем текст из поля поиска
 
         // 🔹 Собираем все предметы, уже встречающиеся в filteredList как результат
-        Set<Item> existingResultItems = new HashSet<>();
+        /*Set<Item> existingResultItems = new HashSet<>();
         for (RecipeResultCollection collection : filteredList) {
             for (RecipeDisplayEntry entry : collection.getAllRecipes()) {
                 getItemFromSlotDisplay(entry.display().result()).ifPresent(existingResultItems::add);
             }
-        }
+        }*/
 
 
-        for (Item item : Registries.ITEM) {
+        /// ////////
+        /*for (Item item : Registries.ITEM) {
             if (item == Items.AIR) continue;
-            if (existingResultItems.contains(item)) continue;
+            //if (existingResultItems.contains(item)) continue;
 
             if (!translate(item.getTranslationKey()).toLowerCase().contains(string.toLowerCase())) continue;
 
@@ -251,7 +253,9 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             RecipeResultCollection myCustomRecipeResultCollection = new RecipeResultCollection(List.of(recipeDisplayEntry));
 
             filteredList.add(myCustomRecipeResultCollection);
-        }
+        }*/
+
+        filteredList.addAll(ItemsClient.generateCustomRecipeList(string));
 
         //if (!string.isEmpty()) {
             /*for (Item item : Registries.ITEM) {

@@ -2,14 +2,133 @@ package items.items.client;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
+import net.minecraft.client.recipebook.ClientRecipeBook;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.recipe.Ingredient;
+import net.minecraft.recipe.NetworkRecipeId;
+import net.minecraft.recipe.RecipeDisplayEntry;
+import net.minecraft.recipe.book.RecipeBookCategories;
+import net.minecraft.recipe.book.RecipeBookCategory;
+import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
+import net.minecraft.recipe.display.SlotDisplay;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.tag.TagKey;
+import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
+
+import java.io.IOException;
+import java.util.*;
+
+import static items.items.client.RecipeLoader.sendToClient;
+import static net.minecraft.client.resource.language.I18n.translate;
 
 public class ItemsClient implements ClientModInitializer {
 
+    public static final Set<Item> existingResultItems = new HashSet<>();
+
+    public static List<RecipeResultCollection> PREGENERATED_RECIPES = generateCustomRecipeList("");
+
+    public static List<RecipeResultCollection> generateCustomRecipeList(String filter) {
+        List<RecipeResultCollection> list = new ArrayList<>();
+
+        for (Item item : Registries.ITEM) {
+            if (item == Items.AIR) continue;
+            if (existingResultItems.contains(item)) continue;
+            if(Objects.equals(filter, "")) {
+                if (!translate(item.getTranslationKey()).toLowerCase().contains(filter.toLowerCase())) continue;
+            }
+
+            Identifier id = Registries.ITEM.getId(item);
+            NetworkRecipeId recipeId = new NetworkRecipeId(9999);
+
+            List<SlotDisplay> slots = List.of(
+                    new SlotDisplay.TagSlotDisplay(TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", id.getPath())))
+            );
+
+            SlotDisplay.StackSlotDisplay resultSlot = new SlotDisplay.StackSlotDisplay(new ItemStack(item, 1));
+            SlotDisplay.ItemSlotDisplay stationSlot = new SlotDisplay.ItemSlotDisplay(
+                    Registries.ITEM.get(Identifier.of("minecraft", "crafting_table"))
+            );
+
+            OptionalInt group = OptionalInt.empty();
+            RecipeBookCategory category = RecipeBookCategories.CRAFTING_MISC;
+
+            List<Ingredient> ingredients = List.of(Ingredient.ofItems(item));
+
+            ShapelessCraftingRecipeDisplay display = new ShapelessCraftingRecipeDisplay(slots, resultSlot, stationSlot);
+            RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
+            list.add(new RecipeResultCollection(List.of(entry)));
+        }
+
+        return list;
+    }
+
+
     private boolean waitingForR = false; // Добавляем флаг для проверки, нужно ли устанавливать экран
+
+    //int getCraftingStationId() {
+    //    Identifier id = Registries.ITEM.getId(Items.CRAFTING_TABLE);
+    //    return NetworkRecipeIdEncoder.encode(id);
+    //}
 
     @Override
     public void onInitializeClient() {
+
+
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            //MyCache.cacheItemsOnce();
+
+
+            int knownRecipeCount = 0;
+
+            ClientRecipeBook recipeBook = null;
+
+            int craftingStationId = 0;
+
+            //if (client.player != null) {
+                recipeBook = client.player.getRecipeBook();
+                List<RecipeResultCollection> recipes = recipeBook.getOrderedResults();
+
+
+                // Проходим по всем коллекциям рецептов
+                for (RecipeResultCollection collection : recipes) {
+                    List<RecipeDisplayEntry> entries = collection.getAllRecipes();
+
+                    // Преобразуем в строку и выводим подробности для каждого рецепта
+                    for (RecipeDisplayEntry entry : entries) {
+
+
+                        SlotDisplay.StackSlotDisplay result = (SlotDisplay.StackSlotDisplay) entry.display().result();
+                        ItemStack stack = result.stack();
+                        Item item = stack.getItem();
+
+                        if (item == Items.CRAFTING_TABLE) craftingStationId=entry.id().index();
+
+
+                        knownRecipeCount++;
+
+                    }
+
+                }
+           // }
+
+            //if (knownRecipeCount < 1358 && craftingStationId == 259) {
+
+                try {
+                    RecipeLoader.loadRecipesFromLog();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+            //}
+
+        });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 

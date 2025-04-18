@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.mojang.datafixers.TypeRewriteRule.orElse;
+import static items.items.client.ItemsClient.existingResultItems;
 
 public class RecipeLoader {
 
@@ -66,10 +67,10 @@ public class RecipeLoader {
     }
 
     public static void loadRecipesFromLog() throws IOException {
-        String name = "recipes_"+SharedConstants.getGameVersion().getName()+".txt";
+        String name = "recipes_" + SharedConstants.getGameVersion().getName() + ".txt";
         try (InputStream input = RecipeLoader.class.getClassLoader().getResourceAsStream(name)) {
             if (input == null) {
-                System.err.println("Не удалось найти файл "+name+" в ресурсах");
+                System.err.println("Не удалось найти файл " + name + " в ресурсах");
                 return;
             }
 
@@ -289,22 +290,23 @@ public class RecipeLoader {
                     TagKey<Item> materialTagKey = TagKey.of(RegistryKeys.ITEM, Identifier.of("minecraft", materialTag));
 
                     if (trimResultMatcher.group(3) != null) {
-                    Registry<ArmorTrimPattern> trimPatternRegistry = MinecraftClient.getInstance().world
-                            .getRegistryManager()
-                            .getOrThrow(RegistryKeys.TRIM_PATTERN);
-                    RegistryEntry<ArmorTrimPattern> patternEntry = trimPatternRegistry
-                            .getEntry(Identifier.of("minecraft", patternId))
-                            .orElse(null);
+                        Registry<ArmorTrimPattern> trimPatternRegistry = MinecraftClient.getInstance().world
+                                .getRegistryManager()
+                                .getOrThrow(RegistryKeys.TRIM_PATTERN);
+                        RegistryEntry<ArmorTrimPattern> patternEntry = trimPatternRegistry
+                                .getEntry(Identifier.of("minecraft", patternId))
+                                .orElse(null);
 
-                    //1.21.5
-                    /*if (patternEntry != null) {
-                        resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
-                                new SlotDisplay.TagSlotDisplay(baseTagKey),
-                                new SlotDisplay.TagSlotDisplay(materialTagKey),
-                                patternEntry
-                        );
-                    }*/
-                }
+                        //1.21.5
+                        /*if (patternEntry != null) {
+                            resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
+                                    new SlotDisplay.TagSlotDisplay(baseTagKey),
+                                    new SlotDisplay.TagSlotDisplay(materialTagKey),
+                                    patternEntry
+                            );
+                        }*/
+                        //
+                    }
                     //1.21.4
                     else  {
                         patternId = trimResultMatcher.group(6);
@@ -314,6 +316,7 @@ public class RecipeLoader {
                                 new SlotDisplay.CompositeSlotDisplay(List.of(new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", patternId))))));
 
                     }
+                    //
 
                 }
 
@@ -516,8 +519,6 @@ public class RecipeLoader {
             }
 
 
-
-
             if (line.contains("ShapelessCraftingRecipeDisplay")) {
                 Matcher idMatcher = Pattern.compile("NetworkID:NetworkRecipeId\\[index\\s*=\\s*(\\d+)\\]").matcher(line);
                 int index = idMatcher.find() ? Integer.parseInt(idMatcher.group(1)) : -1;
@@ -678,9 +679,6 @@ public class RecipeLoader {
             }
 
 
-
-
-
 // Извлекаем тип отображения
             if (line.contains("ShapedCraftingRecipeDisplay")) {
                 Matcher idMatcher = Pattern.compile("NetworkID:NetworkRecipeId\\[index=(\\d+)]").matcher(line);
@@ -839,14 +837,6 @@ public class RecipeLoader {
             }
 
 
-
-
-
-
-
-
-
-
         } catch (Exception e) {
             System.out.println("Ошибка при парсинге строки: " + e.getMessage());
             e.printStackTrace();
@@ -915,7 +905,6 @@ public class RecipeLoader {
     }
 
 
-
     // Метод для создания SlotDisplay в зависимости от типа (CompositeSlotDisplay или TagSlotDisplay)
     private static SlotDisplay createSlotDisplay(String itemOrTag, boolean isBase) {
         if (itemOrTag.equals("air")) {
@@ -936,7 +925,7 @@ public class RecipeLoader {
         }
     }
 
-    private static void sendToClient(RecipeDisplayEntry entry) {
+    static void sendToClient(RecipeDisplayEntry entry) {
         System.out.println("Засылаем пакет:"+entry);
 
         MinecraftClient client = MinecraftClient.getInstance();
@@ -957,6 +946,13 @@ public class RecipeLoader {
 
 
         }
+
+        SlotDisplay.StackSlotDisplay result = (SlotDisplay.StackSlotDisplay) entry.display().result();
+        ItemStack stack = result.stack();
+        Item item = stack.getItem();
+
+        // Добавляем в Set
+        existingResultItems.add(item);
 
         /*RecipeBookAddS2CPacket.Entry packetEntry = new RecipeBookAddS2CPacket.Entry(entry, (byte) 3);
         RecipeBookAddS2CPacket packet = new RecipeBookAddS2CPacket(List.of(packetEntry), false);
