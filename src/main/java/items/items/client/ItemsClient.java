@@ -16,10 +16,12 @@ import net.minecraft.recipe.book.RecipeBookCategories;
 import net.minecraft.recipe.book.RecipeBookCategory;
 import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.recipe.display.SlotDisplay;
+import net.minecraft.recipe.display.SlotDisplayContexts;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.context.ContextParameterMap;
 import org.lwjgl.glfw.GLFW;
 
 import java.io.IOException;
@@ -81,7 +83,7 @@ public class ItemsClient implements ClientModInitializer {
     public void onInitializeClient() {
 
 
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+        /*ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             //MyCache.cacheItemsOnce();
 
 
@@ -104,11 +106,19 @@ public class ItemsClient implements ClientModInitializer {
                     for (RecipeDisplayEntry entry : entries) {
 
 
-                        SlotDisplay.StackSlotDisplay result = (SlotDisplay.StackSlotDisplay) entry.display().result();
-                        ItemStack stack = result.stack();
-                        Item item = stack.getItem();
+                        SlotDisplay resultSlot = entry.display().result();
 
-                        if (item == Items.CRAFTING_TABLE) craftingStationId=entry.id().index();
+                        ContextParameterMap context = SlotDisplayContexts.createParameters(
+                                Objects.requireNonNull(client.world)
+                        );
+
+                        List<ItemStack> stacks = resultSlot.getStacks(context);
+
+
+                        ItemStack stack = stacks.getFirst();
+
+
+                        if (stack.getItem() == Items.CRAFTING_TABLE) craftingStationId=entry.id().index();
 
 
                         knownRecipeCount++;
@@ -118,7 +128,7 @@ public class ItemsClient implements ClientModInitializer {
                 }
            // }
 
-            //if (knownRecipeCount < 1358 && craftingStationId == 259) {
+            if (knownRecipeCount < 1358 && craftingStationId == 259) {
 
                 try {
                     RecipeLoader.loadRecipesFromLog();
@@ -126,9 +136,9 @@ public class ItemsClient implements ClientModInitializer {
                     throw new RuntimeException(e);
                 }
 
-            //}
+            }
 
-        });
+        });*/
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 

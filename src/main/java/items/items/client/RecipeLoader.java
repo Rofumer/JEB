@@ -25,6 +25,7 @@ import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.Identifier;
 import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
+import net.minecraft.util.context.ContextParameterMap;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -947,12 +948,20 @@ public class RecipeLoader {
 
         }
 
-        SlotDisplay.StackSlotDisplay result = (SlotDisplay.StackSlotDisplay) entry.display().result();
-        ItemStack stack = result.stack();
-        Item item = stack.getItem();
+
+        SlotDisplay resultSlot = entry.display().result();
+
+        ContextParameterMap context = SlotDisplayContexts.createParameters(
+                Objects.requireNonNull(client.world)
+        );
+
+        List<ItemStack> stacks = resultSlot.getStacks(context);
+
+
+        ItemStack stack = stacks.get(0);
 
         // Добавляем в Set
-        existingResultItems.add(item);
+        existingResultItems.add(stack.getItem());
 
         /*RecipeBookAddS2CPacket.Entry packetEntry = new RecipeBookAddS2CPacket.Entry(entry, (byte) 3);
         RecipeBookAddS2CPacket packet = new RecipeBookAddS2CPacket(List.of(packetEntry), false);

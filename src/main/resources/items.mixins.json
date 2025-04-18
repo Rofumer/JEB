@@ -8,12 +8,13 @@
     "RecipeBookResultsMixin"
   ],
   "client": [
+    "AbstractCraftingRecipeBookWidgetMixin",
     "AnimatedResultButtonMixin",
+    "ClientPlayNetworkHandlerMixin",
     "RecipeAlternativesWidgetMixin",
     "RecipeBookWidgetAccessor",
     "RecipeBookWidgetSearchMixin",
-    "RecipeResultCollectionMixin",
-    "AbstractCraftingRecipeBookWidgetMixin"
+    "RecipeResultCollectionMixin"
   ],
   "injectors": {
     "defaultRequire": 1
