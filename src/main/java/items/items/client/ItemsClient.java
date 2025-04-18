@@ -2,10 +2,13 @@ package items.items.client;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
+import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.recipebook.ClientRecipeBook;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -32,6 +35,8 @@ import static net.minecraft.client.resource.language.I18n.translate;
 
 public class ItemsClient implements ClientModInitializer {
 
+    private static KeyBinding keyBinding;
+
     public static final Set<Item> existingResultItems = new HashSet<>();
 
     public static List<RecipeResultCollection> PREGENERATED_RECIPES = generateCustomRecipeList("");
@@ -42,9 +47,9 @@ public class ItemsClient implements ClientModInitializer {
         for (Item item : Registries.ITEM) {
             if (item == Items.AIR) continue;
             if (existingResultItems.contains(item)) continue;
-            if(Objects.equals(filter, "")) {
-                if (!translate(item.getTranslationKey()).toLowerCase().contains(filter.toLowerCase())) continue;
-            }
+
+            if (!translate(item.getTranslationKey()).toLowerCase().contains(filter.toLowerCase())) continue;
+
 
             Identifier id = Registries.ITEM.getId(item);
             NetworkRecipeId recipeId = new NetworkRecipeId(9999);
@@ -81,6 +86,14 @@ public class ItemsClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+
+
+        keyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "Optional recipes loading screen", // The translation key of the keybinding's name
+                InputUtil.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
+                GLFW.GLFW_KEY_APOSTROPHE, // The keycode of the key
+                "JEB (Just Enough Book)" // The translation key of the keybinding's category.
+        ));
 
 
         /*ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
@@ -154,7 +167,22 @@ public class ItemsClient implements ClientModInitializer {
 
             }*/
 
-            if (waitingForR) {
+            while (keyBinding.wasPressed()) {
+
+                client.setScreen(new RecipeListScreen());
+
+                /*RecipeListScreen recipeListScreen = new RecipeListScreen();
+
+                try {
+                    RecipeListScreen.sent = true;
+                    recipeListScreen.loadAllRecipes();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }*/
+
+            }
+
+            /*if (waitingForR) {
                 // Добавляем небольшую задержку, чтобы избежать чрезмерной нагрузки
                 if (org.lwjgl.glfw.GLFW.glfwGetKey(client.getWindow().getHandle(), GLFW.GLFW_KEY_R) == GLFW.GLFW_PRESS) {
                     if (client.currentScreen == null) {
@@ -167,7 +195,7 @@ public class ItemsClient implements ClientModInitializer {
                 if (org.lwjgl.glfw.GLFW.glfwGetKey(client.getWindow().getHandle(), GLFW.GLFW_KEY_R) == GLFW.GLFW_PRESS) {
                     waitingForR = true; // Устанавливаем флаг, чтобы экран переключился
                 }
-            }
+            }*/
         });
     }
 }
