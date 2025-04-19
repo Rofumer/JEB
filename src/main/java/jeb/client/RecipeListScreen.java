@@ -1,4 +1,4 @@
-package items.items.client;
+package jeb.client;
 
 import java.io.*;
 import java.nio.file.*;
@@ -6,23 +6,12 @@ import java.util.*;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
-import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
 import net.minecraft.recipe.Ingredient;
-import net.minecraft.recipe.NetworkRecipeId;
 import net.minecraft.recipe.book.RecipeBookCategory;
 import net.minecraft.recipe.RecipeDisplayEntry;
-import net.minecraft.recipe.book.RecipeBookCategory;
-import net.minecraft.recipe.display.RecipeDisplay;
-import net.minecraft.recipe.display.ShapedCraftingRecipeDisplay;
-import net.minecraft.recipe.display.SlotDisplay;
 import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.registry.tag.TagKey;
 import net.minecraft.text.Text; // Исправленный импорт
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -32,14 +21,8 @@ import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.io.*;
-import java.lang.reflect.Type;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.*;
 
 
 import java.util.List;
@@ -47,9 +30,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
-import static items.items.client.ItemsClient.generateCustomRecipeList;
-import static items.items.client.RecipeLoader.loadRecipesFromLog;
-import static net.minecraft.client.recipebook.RecipeBookType.CRAFTING;
+import static jeb.client.JEBClient.generateCustomRecipeList;
+import static jeb.client.RecipeLoader.loadRecipesFromLog;
 
 public class RecipeListScreen extends Screen {
 
@@ -67,7 +49,7 @@ public class RecipeListScreen extends Screen {
         super.init();
 
         // Используем builder для создания кнопки
-        this.addDrawableChild(ButtonWidget.builder(Text.of("Show All Recipes"), button -> {
+        /*this.addDrawableChild(ButtonWidget.builder(Text.of("Show All Recipes"), button -> {
                     try {
                         showAllRecipes();
                     } catch (InterruptedException e) {
@@ -75,12 +57,15 @@ public class RecipeListScreen extends Screen {
                     }
                 }).position(this.width / 2 - 100, this.height / 2 - 20)
                 .size(200, 20)
-                .build());
+                .build());*/
 
         this.addDrawableChild(ButtonWidget.builder(Text.of("Load All Recipes"), button -> {
                     try {
                         loadAllRecipes();
-                        ItemsClient.PREGENERATED_RECIPES = generateCustomRecipeList("");
+                        JEBClient.PREGENERATED_RECIPES = generateCustomRecipeList("");
+                        client.setScreen(null);
+                        client.player.sendMessage(Text.literal("All recipes have been loaded"), false);
+
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }

@@ -1,4 +1,4 @@
-package items.items.mixin;
+package jeb.mixin;
 
 import net.minecraft.client.gui.screen.recipebook.RecipeBookWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;

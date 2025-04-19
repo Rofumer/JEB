@@ -1,13 +1,10 @@
-package items.items.client;
+package jeb.client;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
 import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.recipebook.ClientRecipeBook;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -19,21 +16,17 @@ import net.minecraft.recipe.book.RecipeBookCategories;
 import net.minecraft.recipe.book.RecipeBookCategory;
 import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.recipe.display.SlotDisplay;
-import net.minecraft.recipe.display.SlotDisplayContexts;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.context.ContextParameterMap;
 import org.lwjgl.glfw.GLFW;
 
-import java.io.IOException;
 import java.util.*;
 
-import static items.items.client.RecipeLoader.sendToClient;
 import static net.minecraft.client.resource.language.I18n.translate;
 
-public class ItemsClient implements ClientModInitializer {
+public class JEBClient implements ClientModInitializer {
 
     private static KeyBinding keyBinding;
 

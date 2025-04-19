@@ -1,5 +1,6 @@
-package items.items.mixin;
+package jeb.mixin;
 
+import jeb.accessor.ClientRecipeBookAccessor;
 import net.minecraft.client.recipebook.ClientRecipeBook;
 import net.minecraft.recipe.NetworkRecipeId;
 import net.minecraft.recipe.RecipeDisplayEntry;
@@ -14,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.*;
 
 @Mixin(ClientRecipeBook.class)
-public abstract class ClientRecipeBookMixin implements items.items.accessor.ClientRecipeBookAccessor {
+public abstract class ClientRecipeBookMixin implements ClientRecipeBookAccessor {
 
     @Accessor("recipes")
     @Override

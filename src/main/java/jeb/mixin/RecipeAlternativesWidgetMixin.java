@@ -1,4 +1,4 @@
-package items.items.mixin;
+package jeb.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.gui.screen.recipebook.RecipeAlternativesWidget;

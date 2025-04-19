@@ -1,24 +1,16 @@
-package items.items.mixin;
+package jeb.mixin;
 
-import items.items.accessor.ClientRecipeBookAccessor;
-import items.items.client.ItemsClient;
+import jeb.accessor.ClientRecipeBookAccessor;
+import jeb.client.JEBClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.recipebook.*;
-import net.minecraft.item.Items;
-import net.minecraft.item.tooltip.TooltipData;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.recipe.NetworkRecipeId;
-import net.minecraft.recipe.book.RecipeBookCategories;
-import net.minecraft.recipe.book.RecipeBookCategory;
-import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.recipe.display.SlotDisplayContexts;
-import net.minecraft.registry.DynamicRegistryManager;
-import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.context.ContextParameterMap;
 import com.google.common.collect.Lists;
 import net.minecraft.client.MinecraftClient;
@@ -27,14 +19,11 @@ import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.recipebook.ClientRecipeBook;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.recipe.Recipe;
 import net.minecraft.recipe.RecipeDisplayEntry;
 import net.minecraft.recipe.display.SlotDisplay;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.screen.AbstractRecipeScreenHandler;
-import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -45,8 +34,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.*;
-
-import static net.minecraft.client.resource.language.I18n.translate;
 
 @Mixin(RecipeBookWidget.class)
 public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreenHandler> {
@@ -255,7 +242,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             filteredList.add(myCustomRecipeResultCollection);
         }*/
 
-        filteredList.addAll(ItemsClient.generateCustomRecipeList(string));
+        filteredList.addAll(JEBClient.generateCustomRecipeList(string));
 
         //if (!string.isEmpty()) {
             /*for (Item item : Registries.ITEM) {

@@ -1,4 +1,4 @@
-package items.items.accessor;
+package jeb.accessor;
 
 import net.minecraft.client.recipebook.ClientRecipeBook;
 import net.minecraft.recipe.NetworkRecipeId;

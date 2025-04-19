@@ -1,4 +1,4 @@
-package items.items.mixin;
+package jeb.mixin;
 
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
 import org.spongepowered.asm.mixin.Mixin;

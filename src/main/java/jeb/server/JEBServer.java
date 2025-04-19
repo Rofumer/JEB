@@ -1,8 +1,8 @@
-package items.items.server;
+package jeb.server;
 
 import net.fabricmc.api.ModInitializer;
 
-public class ItemsServer implements ModInitializer {
+public class JEBServer implements ModInitializer {
     @Override
     public void onInitialize() {
         System.out.println("Серверная часть мода инициализирована!");

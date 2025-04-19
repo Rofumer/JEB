@@ -1,4 +1,4 @@
-package items.items.mixin;
+package jeb.mixin;
 
 import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
 import net.minecraft.network.packet.s2c.play.RecipeBookSettingsS2CPacket;

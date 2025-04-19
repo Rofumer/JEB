@@ -1,4 +1,4 @@
-package items.items.client;
+package jeb.client;
 
 import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
@@ -6,7 +6,6 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.recipebook.RecipeBookProvider;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.recipebook.ClientRecipeBook;
-import net.minecraft.client.search.SearchManager;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -24,19 +23,17 @@ import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.Identifier;
-import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
 import net.minecraft.util.context.ContextParameterMap;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.mojang.datafixers.TypeRewriteRule.orElse;
-import static items.items.client.ItemsClient.existingResultItems;
+import static jeb.client.JEBClient.existingResultItems;
 
 public class RecipeLoader {
 
@@ -299,24 +296,24 @@ public class RecipeLoader {
                                 .orElse(null);
 
                         //1.21.5
-                        /*if (patternEntry != null) {
+                        if (patternEntry != null) {
                             resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
                                     new SlotDisplay.TagSlotDisplay(baseTagKey),
                                     new SlotDisplay.TagSlotDisplay(materialTagKey),
                                     patternEntry
                             );
-                        }*/
+                        }
                         //
                     }
                     //1.21.4
-                    else  {
+                    /*else  {
                         patternId = trimResultMatcher.group(6);
                         resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
                                 new SlotDisplay.TagSlotDisplay(baseTagKey),
                                 new SlotDisplay.TagSlotDisplay(materialTagKey),
                                 new SlotDisplay.CompositeSlotDisplay(List.of(new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", patternId))))));
 
-                    }
+                    }*/
                     //
 
                 }

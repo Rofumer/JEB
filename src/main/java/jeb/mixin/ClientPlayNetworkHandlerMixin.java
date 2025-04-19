@@ -1,16 +1,14 @@
-package items.items.mixin;
+package jeb.mixin;
 
-import items.items.client.RecipeLoader;
+import jeb.client.RecipeLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.recipebook.ClientRecipeBook;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
 import net.minecraft.recipe.RecipeDisplayEntry;
-import net.minecraft.recipe.display.RecipeDisplay;
 import net.minecraft.recipe.display.SlotDisplay;
 import net.minecraft.recipe.display.SlotDisplayContexts;
 import net.minecraft.util.context.ContextParameterMap;
@@ -25,7 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
-import static items.items.client.ItemsClient.existingResultItems;
+import static jeb.client.JEBClient.existingResultItems;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public abstract class ClientPlayNetworkHandlerMixin {
