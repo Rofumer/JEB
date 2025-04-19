@@ -69,7 +69,7 @@ public abstract class RecipeBookWidgetMixin {
                                         List<RecipeResultCollection> list2,
                                         String string) {
 
-        System.out.println("list2 содержит " + list2.size() + " рецептов");
+        //System.out.println("list2 содержит " + list2.size() + " рецептов");
 
         // Получаем доступ к searchField через наш accessor
         RecipeBookWidgetAccessor accessor = (RecipeBookWidgetAccessor) this;
@@ -91,7 +91,7 @@ public abstract class RecipeBookWidgetMixin {
             if (!translate(item.getTranslationKey()).toLowerCase().contains(searchText.toLowerCase())) continue;
 
             Identifier id = Registries.ITEM.getId(item);
-            System.out.println("Item: " + id);
+            //System.out.println("Item: " + id);
 
             NetworkRecipeId recipeId = new NetworkRecipeId(9999);
 
@@ -153,8 +153,8 @@ public abstract class RecipeBookWidgetMixin {
 
 
 
-        System.out.println("2: list2 содержит " + list2.size() + " рецептов");
-        System.out.println("Текст в поисковом поле: " + searchText);
+        //System.out.println("2: list2 содержит " + list2.size() + " рецептов");
+        //System.out.println("Текст в поисковом поле: " + searchText);
     }
 
 

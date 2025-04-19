@@ -82,7 +82,7 @@ public class RecipeBookResultsMixin {
             if (button == 0) {
 
 
-                System.out.println(animatedResultButton.getCurrentId().toString());
+                //System.out.println(animatedResultButton.getCurrentId().toString());
 
                 MinecraftClient client = MinecraftClient.getInstance();
                 ClientRecipeBook recipeBook = client.player.getRecipeBook();

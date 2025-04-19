@@ -296,24 +296,24 @@ public class RecipeLoader {
                                 .orElse(null);
 
                         //1.21.5
-                        if (patternEntry != null) {
+                        /*if (patternEntry != null) {
                             resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
                                     new SlotDisplay.TagSlotDisplay(baseTagKey),
                                     new SlotDisplay.TagSlotDisplay(materialTagKey),
                                     patternEntry
                             );
-                        }
+                        }*/
                         //
                     }
                     //1.21.4
-                    /*else  {
+                    else  {
                         patternId = trimResultMatcher.group(6);
                         resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
                                 new SlotDisplay.TagSlotDisplay(baseTagKey),
                                 new SlotDisplay.TagSlotDisplay(materialTagKey),
                                 new SlotDisplay.CompositeSlotDisplay(List.of(new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", patternId))))));
 
-                    }*/
+                    }
                     //
 
                 }
@@ -924,7 +924,7 @@ public class RecipeLoader {
     }
 
     static void sendToClient(RecipeDisplayEntry entry) {
-        System.out.println("Засылаем пакет:"+entry);
+        //System.out.println("Засылаем пакет:"+entry);
 
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player != null) {

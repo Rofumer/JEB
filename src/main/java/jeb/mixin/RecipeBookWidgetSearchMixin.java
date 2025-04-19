@@ -69,7 +69,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         Screen screen = client.currentScreen;
 
         if (screen instanceof RecipeBookProvider provider && entry != null) {
-            System.out.println("РецептL " + entry.display().toString());
+            //System.out.println("РецептL " + entry.display().toString());
             if(!results.isCraftable(recipeId) && recipeId.index()!=9999) {
                 provider.onCraftFailed(entry.display());
             }
@@ -194,7 +194,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             filteredList.removeIf(rc -> !rc.hasCraftableRecipes());
         }
 
-        System.out.println("filteredList содержит " + filteredList.size() + " рецептов");
+        //System.out.println("filteredList содержит " + filteredList.size() + " рецептов");
 
         // Получаем доступ к searchField через наш accessor
 
@@ -281,8 +281,8 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
 
 
-        System.out.println("2: filteredList содержит " + filteredList.size() + " рецептов");
-        System.out.println("Текст в поисковом поле: " + string);
+        //System.out.println("2: filteredList содержит " + filteredList.size() + " рецептов");
+        //System.out.println("Текст в поисковом поле: " + string);
         
         recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
         ci.cancel();
