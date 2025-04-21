@@ -296,24 +296,24 @@ public class RecipeLoader {
                                 .orElse(null);
 
                         //1.21.5
-                        /*if (patternEntry != null) {
+                        if (patternEntry != null) {
                             resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
                                     new SlotDisplay.TagSlotDisplay(baseTagKey),
                                     new SlotDisplay.TagSlotDisplay(materialTagKey),
                                     patternEntry
                             );
-                        }*/
+                        }
                         //
                     }
                     //1.21.4
-                    else  {
+                    /*else  {
                         patternId = trimResultMatcher.group(6);
                         resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
                                 new SlotDisplay.TagSlotDisplay(baseTagKey),
                                 new SlotDisplay.TagSlotDisplay(materialTagKey),
                                 new SlotDisplay.CompositeSlotDisplay(List.of(new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", patternId))))));
 
-                    }
+                    }*/
                     //
 
                 }
@@ -958,7 +958,9 @@ public class RecipeLoader {
         ItemStack stack = stacks.get(0);
 
         // Добавляем в Set
-        existingResultItems.add(stack.getItem());
+        if(entry.display().craftingStation().getStacks(context).getFirst().getItem() == Items.CRAFTING_TABLE) {
+            existingResultItems.add(stack.getItem());
+        }
 
         /*RecipeBookAddS2CPacket.Entry packetEntry = new RecipeBookAddS2CPacket.Entry(entry, (byte) 3);
         RecipeBookAddS2CPacket packet = new RecipeBookAddS2CPacket(List.of(packetEntry), false);

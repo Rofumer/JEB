@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static jeb.client.JEBClient.existingResultItems;
+import static jeb.client.JEBClient.recipesLoaded;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public abstract class ClientPlayNetworkHandlerMixin {
@@ -49,7 +50,9 @@ public abstract class ClientPlayNetworkHandlerMixin {
         ItemStack stack = stacks.get(0);
 
         // Добавляем в Set
-        existingResultItems.add(stack.getItem());
+        if(entry.contents().display().craftingStation().getStacks(context).getFirst().getItem() == Items.CRAFTING_TABLE) {
+            existingResultItems.add(stack.getItem());
+        }
 
         // Можно сделать что угодно с display — лог, анализ, модификация
         // System.out.println("Получен display: " + display);
@@ -59,6 +62,9 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
         @Inject(method = "onRecipeBookAdd", at = @At("TAIL"))
         private void afterRecipeBookAdd(RecipeBookAddS2CPacket packet, CallbackInfo ci) {
+
+            if(recipesLoaded) return;
+
             MinecraftClient client = MinecraftClient.getInstance();
 
             int knownRecipeCount = 0;
@@ -106,6 +112,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
                 try {
                     RecipeLoader.loadRecipesFromLog();
+                    recipesLoaded = true;
+
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }

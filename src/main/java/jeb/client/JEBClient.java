@@ -3,6 +3,7 @@ package jeb.client;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
@@ -30,7 +31,9 @@ public class JEBClient implements ClientModInitializer {
 
     private static KeyBinding keyBinding;
 
-    public static final Set<Item> existingResultItems = new HashSet<>();
+    public static Set<Item> existingResultItems = new HashSet<>();
+
+    public static boolean recipesLoaded = false;
 
     public static List<RecipeResultCollection> PREGENERATED_RECIPES = generateCustomRecipeList("");
 
@@ -87,6 +90,12 @@ public class JEBClient implements ClientModInitializer {
                 GLFW.GLFW_KEY_APOSTROPHE, // The keycode of the key
                 "JEB (Just Enough Book)" // The translation key of the keybinding's category.
         ));
+
+
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            recipesLoaded = false;
+            existingResultItems = new HashSet<>();
+        });
 
 
         /*ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
