@@ -309,7 +309,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         String key = stack.getItem().getTranslationKey().toLowerCase(Locale.ROOT);
 
         // Проверка на имя мода
-        if (modName != null && !modName.isEmpty() && !id.contains(modName.toLowerCase(Locale.ROOT))) {
+        if (modName != null && !modName.isEmpty() && !Registries.ITEM.getId(stack.getItem()).getNamespace().contains(modName.toLowerCase(Locale.ROOT))) {
             return false;  // Не принадлежит указанному моду
         }
 
