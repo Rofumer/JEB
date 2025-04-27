@@ -121,7 +121,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         );
     }
 
-    @Unique
+    /****@Unique
     private boolean recipeResultMatchesQuery(RecipeDisplayEntry entry, String query) {
         if (entry.display() == null || entry.display().result() == null) return false;
 
@@ -192,7 +192,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
         if (filteringCraftable) {
             filteredList.removeIf(rc -> !rc.hasCraftableRecipes());
-        }
+        }****/
 
         //System.out.println("filteredList содержит " + filteredList.size() + " рецептов");
 
@@ -242,7 +242,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             filteredList.add(myCustomRecipeResultCollection);
         }*/
 
-        filteredList.addAll(JEBClient.generateCustomRecipeList(string));
+        /****filteredList.addAll(JEBClient.generateCustomRecipeList(string));****/
 
         //if (!string.isEmpty()) {
             /*for (Item item : Registries.ITEM) {
@@ -284,9 +284,112 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         //System.out.println("2: filteredList содержит " + filteredList.size() + " рецептов");
         //System.out.println("Текст в поисковом поле: " + string);
         
+    /****    recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
+        ci.cancel();
+    }****/
+
+    @Unique
+    private boolean recipeResultMatchesQuery(RecipeDisplayEntry entry, String query, String modName) {
+        if (entry.display() == null || entry.display().result() == null) return false;
+
+        SlotDisplay resultSlot = entry.display().result();
+
+        ContextParameterMap context = SlotDisplayContexts.createParameters(
+                Objects.requireNonNull(this.client.world)
+        );
+
+        List<ItemStack> stacks = resultSlot.getStacks(context);
+        if (stacks.isEmpty()) return false;
+
+        ItemStack stack = stacks.get(0);
+        if (stack == null || stack.isEmpty()) return false;
+
+        String name = stack.getName().getString().toLowerCase(Locale.ROOT);
+        String id = stack.getItem().toString().toLowerCase(Locale.ROOT);
+        String key = stack.getItem().getTranslationKey().toLowerCase(Locale.ROOT);
+
+        // Проверка на имя мода
+        if (modName != null && !modName.isEmpty() && !id.contains(modName.toLowerCase(Locale.ROOT))) {
+            return false;  // Не принадлежит указанному моду
+        }
+
+        // Обычный поиск по строкам
+        if (name.contains(query) || id.contains(query) || key.contains(query)) {
+            return true;
+        }
+
+        // Поиск по тултипам
+        RegistryWrapper.WrapperLookup lookup = client.world.getRegistryManager();
+        Item.TooltipContext tooltipContext = Item.TooltipContext.create(lookup);
+        TooltipType tooltipType = TooltipType.Default.BASIC;
+
+        List<Text> tooltip = stack.getTooltip(tooltipContext, client.player, tooltipType);
+        for (Text line : tooltip) {
+            String clean = Formatting.strip(line.getString()).toLowerCase(Locale.ROOT).trim();
+            if (clean.contains(query)) return true;
+        }
+
+        return false;
+    }
+
+    @Inject(method = "refreshResults", at = @At("HEAD"), cancellable = true)
+    private void onCustomSearch(boolean resetCurrentPage, boolean filteringCraftable, CallbackInfo ci) {
+        String string = searchField.getText();
+        //if (string.isEmpty()) return;
+
+        boolean searchIngredients = string.startsWith("#");
+        String query = (searchIngredients ? string.substring(1) : string).toLowerCase();
+
+        String modName = null;
+        if (string.startsWith("@")) {
+            // Извлекаем имя мода, если оно присутствует в начале строки
+            int endIndex = string.indexOf(" ");
+            if (endIndex != -1) {
+                modName = string.substring(1, endIndex).trim();  // Извлекаем имя мода
+                query = string.substring(endIndex + 1).toLowerCase();  // Остальная часть это обычный запрос
+            } else {
+                modName = string.substring(1).trim();  // Имя мода без строки запроса
+                query = "";  // Если нет строки запроса, то фильтровать только по имени мода
+            }
+        }
+
+        ClientPlayNetworkHandler handler = client.getNetworkHandler();
+        if (handler == null) return;
+
+        List<RecipeResultCollection> originalList = recipeBook.getResultsForCategory(currentTab.getCategory());
+        List<RecipeResultCollection> filteredList = Lists.newArrayList();
+
+        for (RecipeResultCollection collection : originalList) {
+            if (!collection.hasDisplayableRecipes()) continue;
+
+            for (RecipeDisplayEntry entry : collection.getAllRecipes()) {
+
+                boolean match;
+                if (searchIngredients){
+                    match = recipeDisplayMatchesIngredientQuery(entry, query);
+
+                }
+                else
+                {
+                    match = recipeResultMatchesQuery(entry, query, modName);
+                }
+                if (match) {
+                    filteredList.add(collection);
+                    break;
+                }
+            }
+        }
+
+        if (filteringCraftable) {
+            filteredList.removeIf(rc -> !rc.hasCraftableRecipes());
+        }
+
+        filteredList.addAll(JEBClient.generateCustomRecipeList(string));
+
         recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
         ci.cancel();
     }
+
 
 
     @Unique
