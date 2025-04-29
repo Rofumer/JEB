@@ -140,7 +140,6 @@ public class JEBClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
 
-
         keyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "Optional recipes loading screen", // The translation key of the keybinding's name
                 InputUtil.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.

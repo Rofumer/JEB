@@ -1,16 +1,22 @@
 package jeb.mixin;
 
+import jeb.accessor.AnimatedResultButtonExtension;
 import jeb.accessor.ClientRecipeBookAccessor;
+import jeb.client.FavoritesManager;
 import jeb.client.JEBClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.recipebook.*;
+import net.minecraft.item.Items;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.recipe.NetworkRecipeId;
+import net.minecraft.recipe.book.RecipeBookCategories;
+import net.minecraft.recipe.book.RecipeBookCategory;
 import net.minecraft.recipe.display.SlotDisplayContexts;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.context.ContextParameterMap;
 import com.google.common.collect.Lists;
 import net.minecraft.client.MinecraftClient;
@@ -24,6 +30,7 @@ import net.minecraft.recipe.display.SlotDisplay;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.screen.AbstractRecipeScreenHandler;
+import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -33,6 +40,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.lang.reflect.Method;
 import java.util.*;
 
 @Mixin(RecipeBookWidget.class)
@@ -52,6 +60,42 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
     @Shadow
     private TextFieldWidget searchField;
+
+
+    @Unique
+    private boolean isFavoritesTabActive() {
+        return currentTab != null && currentTab.getCategory() == RecipeBookCategories.CAMPFIRE; // или замени CAMPFIRE на свою категорию
+    }
+
+
+    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+    private void onKeyPressed(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
+        // Проверка на нужную клавишу (например, клавиша G, keyCode = 71)
+        if (keyCode == GLFW.GLFW_KEY_A) {
+            AnimatedResultButton hovered = ((RecipeBookResultsAccessor) recipesArea).getHoveredResultButton();
+            if (hovered != null) {
+                System.out.println("Над кнопкой: " + hovered.getDisplayStack().getItem().toString());
+                //ItemStack stack = hovered.getDisplayStack();
+                if (isFavoritesTabActive()) {
+                    FavoritesManager.removeFavorite(hovered.getDisplayStack());
+                    // Рефреш через reflection
+                    try {
+                        Method method = RecipeBookWidget.class.getDeclaredMethod("refresh");
+                        method.setAccessible(true);
+                        method.invoke(this);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    FavoritesManager.saveFavorite(hovered.getDisplayStack());
+                }
+                //FavoritesManager.saveFavorite(stack);
+                ((AnimatedResultButtonExtension) hovered).jeb$flash();
+                // Здесь можно выполнить любое действие, например, выбрать рецепт, показать информацию и т.д.
+                cir.setReturnValue(true);
+            }
+        }
+    }
 
     @Inject(method = "select", at = @At(
             value = "INVOKE",
@@ -335,21 +379,18 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     @Inject(method = "refreshResults", at = @At("HEAD"), cancellable = true)
     private void onCustomSearch(boolean resetCurrentPage, boolean filteringCraftable, CallbackInfo ci) {
         String string = searchField.getText();
-        //if (string.isEmpty()) return;
-
         boolean searchIngredients = string.startsWith("#");
         String query = (searchIngredients ? string.substring(1) : string).toLowerCase();
 
         String modName = null;
         if (string.startsWith("@")) {
-            // Извлекаем имя мода, если оно присутствует в начале строки
             int endIndex = string.indexOf(" ");
             if (endIndex != -1) {
-                modName = string.substring(1, endIndex).trim();  // Извлекаем имя мода
-                query = string.substring(endIndex + 1).toLowerCase();  // Остальная часть это обычный запрос
+                modName = string.substring(1, endIndex).trim();
+                query = string.substring(endIndex + 1).toLowerCase();
             } else {
-                modName = string.substring(1).trim();  // Имя мода без строки запроса
-                query = "";  // Если нет строки запроса, то фильтровать только по имени мода
+                modName = string.substring(1).trim();
+                query = "";
             }
         }
 
@@ -359,18 +400,45 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         List<RecipeResultCollection> originalList = recipeBook.getResultsForCategory(currentTab.getCategory());
         List<RecipeResultCollection> filteredList = Lists.newArrayList();
 
+        // === Если на вкладке избранного (используем CAMPFIRE как временную категорию) ===
+        if (currentTab.getCategory() == RecipeBookCategories.CAMPFIRE) {
+            originalList = recipeBook.getOrderedResults();
+
+            Set<Identifier> favoriteItems = FavoritesManager.loadFavoriteItemIds();
+
+            List<RecipeResultCollection> matching = null;
+            matching = new ArrayList<>();
+            for (RecipeResultCollection collection : originalList) {
+                for (RecipeDisplayEntry entry : collection.getAllRecipes()) {
+                    List<ItemStack> stacks = entry.getStacks(SlotDisplayContexts.createParameters(MinecraftClient.getInstance().world));
+                    if (!stacks.isEmpty()) {
+                        Identifier itemId = Registries.ITEM.getId(stacks.get(0).getItem());
+                        if (favoriteItems.contains(itemId)) {
+                            matching.add(new RecipeResultCollection(List.of(entry)));
+                        }
+                    }
+                }
+
+            }
+
+            if (!matching.isEmpty()) {
+                filteredList.addAll(matching);
+            }
+
+            recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
+            ci.cancel();
+            return;
+        }
+
+        // === Обычный поиск ===
         for (RecipeResultCollection collection : originalList) {
             if (!collection.hasDisplayableRecipes()) continue;
 
             for (RecipeDisplayEntry entry : collection.getAllRecipes()) {
-
                 boolean match;
-                if (searchIngredients){
+                if (searchIngredients) {
                     match = recipeDisplayMatchesIngredientQuery(entry, query);
-
-                }
-                else
-                {
+                } else {
                     match = recipeResultMatchesQuery(entry, query, modName);
                 }
                 if (match) {
@@ -389,6 +457,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
         ci.cancel();
     }
+
 
 
 
@@ -418,6 +487,34 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         }
 
         return Optional.empty();
+    }
+
+    @Inject(method = "reset", at = @At(value = "INVOKE", target = "Ljava/util/List;clear()V", shift = At.Shift.AFTER))
+    private void addNewTab(CallbackInfo ci) {
+        RecipeBookWidget<?> recipeBookWidget = (RecipeBookWidget<?>) (Object) this;
+
+        // Получаем список вкладок через @Accessor
+        List<RecipeBookWidget.Tab> tabs = ((RecipeBookWidgetAccessor) recipeBookWidget).gettabs();
+
+        // Создаем изменяемую копию списка tabs
+        List<RecipeBookWidget.Tab> newTabs = new ArrayList<>(tabs);
+
+        // Создаем новую вкладку (Tab) с иконкой и категорией
+        ItemStack primaryIcon = new ItemStack(Items.WRITABLE_BOOK);  // Иконка из алмаза
+        RecipeBookCategory category = RecipeBookCategories.CAMPFIRE; // Категория рецептов
+        RecipeBookWidget.Tab newTab = new RecipeBookWidget.Tab(primaryIcon.getItem(), category);
+
+        // Добавляем новую кнопку вкладки в список tabButtons
+        newTabs.add(newTab);  // Добавляем новую кнопку вкладки
+
+        try {
+            java.lang.reflect.Field tabsField = RecipeBookWidget.class.getDeclaredField("tabs");
+            tabsField.setAccessible(true);  // Даем доступ к приватному полю
+            tabsField.set(recipeBookWidget, newTabs);  // Устанавливаем новое значение
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
 }

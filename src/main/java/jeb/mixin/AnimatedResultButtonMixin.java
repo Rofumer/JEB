@@ -1,17 +1,13 @@
 package jeb.mixin;
 
+import jeb.accessor.AnimatedResultButtonExtension;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.recipebook.AnimatedResultButton;
-import net.minecraft.client.gui.screen.recipebook.RecipeBookResults;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
-import net.minecraft.client.recipebook.ClientRecipeBook;
 import net.minecraft.item.ItemStack;
-import net.minecraft.recipe.NetworkRecipeId;
 import net.minecraft.recipe.RecipeDisplayEntry;
 import net.minecraft.text.Text;
-import net.minecraft.util.context.ContextParameterMap;
-import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -19,20 +15,33 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Stream;
-
-
-
 
 
 @Mixin(AnimatedResultButton.class)
-public class AnimatedResultButtonMixin {
+public class AnimatedResultButtonMixin implements AnimatedResultButtonExtension {
+
+
+    @Unique
+    private long jeb$flashUntil = 0L; // время до которого будет подсветка
+
+    @Unique
+    public void jeb$flash() {
+        this.jeb$flashUntil = System.currentTimeMillis() + 300; // подсветка 300 мс
+    }
+
+    @Unique
+    private boolean jeb$isFlashing() {
+        return System.currentTimeMillis() < this.jeb$flashUntil;
+    }
+
+    @Inject(method = "renderWidget", at = @At("TAIL"))
+    private void jeb$renderFlash(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        if (jeb$isFlashing()) {
+            AnimatedResultButton self = (AnimatedResultButton) (Object) this;
+            context.drawBorder(self.getX(), self.getY(), self.getWidth(), self.getHeight(), 0xFFFFFF00); // Жёлтая рамка
+        }
+    }
 
     @Redirect(
             method = "showResultCollection",

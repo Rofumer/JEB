@@ -7,6 +7,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
+import java.util.List;
+
 @Mixin(RecipeBookWidget.class)
 public interface RecipeBookWidgetAccessor {
     @Invoker("reset")
@@ -14,6 +16,9 @@ public interface RecipeBookWidgetAccessor {
 
     @Accessor("searchField")
     TextFieldWidget getSearchField();
-
+    @Accessor("tabButtons")
+    List<?> getTabButtons();
+    @Accessor("tabs")
+    List<RecipeBookWidget.Tab> gettabs();
 
 }
