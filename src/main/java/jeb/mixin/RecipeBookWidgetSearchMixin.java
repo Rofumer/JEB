@@ -4,8 +4,12 @@ import jeb.accessor.AnimatedResultButtonExtension;
 import jeb.accessor.ClientRecipeBookAccessor;
 import jeb.client.FavoritesManager;
 import jeb.client.JEBClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ButtonTextures;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.recipebook.*;
+import net.minecraft.client.gui.tooltip.Tooltip;
+import net.minecraft.client.gui.widget.ToggleButtonWidget;
 import net.minecraft.item.Items;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.recipe.NetworkRecipeId;
@@ -74,6 +78,71 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     @Final
     private List<RecipeGroupButtonWidget> tabButtons;
 
+    @Shadow
+    protected ToggleButtonWidget toggleCraftableButton;
+
+    @Unique
+    private ToggleButtonWidget jeb$customToggleButton;
+
+    @Unique
+    private boolean jeb$customToggleState = false;
+
+    @Unique
+    private static final ButtonTextures TEXTURES_ALT = new ButtonTextures(
+            Identifier.of("jeb", "textures/gui/2x2_button.png"),
+            Identifier.of("jeb", "textures/gui/2x2_button_highlighted.png")
+    );
+
+    @Unique
+    private static final ButtonTextures TEXTURES_DEFAULT = new ButtonTextures(
+            Identifier.of("jeb", "textures/gui/3x3_button.png"),
+            Identifier.of("jeb", "textures/gui/3x3_button_highlighted.png")
+    );
+
+
+    @Inject(method = "reset", at = @At("TAIL"))
+    private void jeb$addCustomToggleButton(CallbackInfo ci) {
+        int x = this.toggleCraftableButton.getX();
+        int y = this.toggleCraftableButton.getY()+125;
+
+        jeb$customToggleButton = new ToggleButtonWidget(x, y, 20, 16, false);
+        jeb$customToggleButton.setTextures(TEXTURES_DEFAULT);
+        jeb$customToggleButton.setTooltip(Tooltip.of(Text.of("My Button")));
+        jeb$customToggleButton.setMessage(Text.of("!"));
+        jeb$customToggleButton.visible = true;
+
+    }
+
+    @Inject(
+            method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/widget/ToggleButtonWidget;render(Lnet/minecraft/client/gui/DrawContext;IIF)V",
+                    ordinal = 0, // если их несколько, выбирай нужный
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void jeb$renderCustomToggle(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        if (jeb$customToggleButton != null && jeb$customToggleButton.visible) {
+            jeb$customToggleButton.render(context, mouseX, mouseY, delta);
+        }
+    }
+
+
+    @Inject(method = "mouseClicked", at = @At("TAIL"), cancellable = true)
+    private void jeb$clickCustomToggle(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
+        if (jeb$customToggleButton != null && jeb$customToggleButton.mouseClicked(mouseX, mouseY, button)) {
+            jeb$customToggleState = !jeb$customToggleState;
+            jeb$customToggleButton.setToggled(jeb$customToggleState);
+
+            // Меняем текстуру в зависимости от состояния
+            jeb$customToggleButton.setTextures(jeb$customToggleState ? TEXTURES_ALT : TEXTURES_DEFAULT);
+
+            System.out.println("Кастомная кнопка: " + (jeb$customToggleState ? "включена" : "выключена"));
+            cir.setReturnValue(true);
+        }
+    }
+
     @Inject(
             method = "reset",
             at = @At(
@@ -91,8 +160,10 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         // Создаём копию, в которую можно добавлять
         List<RecipeBookWidget.Tab> newTabs = new ArrayList<>(originalTabs);
 
-        RecipeBookType type = RecipeBookType.CRAFTING;
-        RecipeBookWidget.Tab newTab = new RecipeBookWidget.Tab(type);
+        //RecipeBookType type = RecipeBookType.CRAFTING;
+        //RecipeBookWidget.Tab newTab = new RecipeBookWidget.Tab(type);
+        RecipeBookWidget.Tab newTab = new RecipeBookWidget.Tab(Items.WRITABLE_BOOK, RecipeBookCategories.CAMPFIRE);
+        //RecipeGroupButtonWidget tabButton = new RecipeGroupButtonWidget(customTab);
         //newTabs.add(newTab);
 
         // Заменяем приватное поле через reflection
@@ -107,6 +178,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         // Создаём кнопку вкладки
         RecipeGroupButtonWidget tabButton = new RecipeGroupButtonWidget(newTab);
         tabButton.setMessage(Text.of("Favorites"));
+
         //tabButton.set;
 
         this.tabButtons.add(tabButton);
@@ -469,8 +541,8 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             Set<Identifier> favoriteItems = FavoritesManager.loadFavoriteItemIds();
 
             List<RecipeResultCollection> matching = null;
-            matching = new ArrayList<>();
             for (RecipeResultCollection collection : originalList) {
+                matching = new ArrayList<>();
                 for (RecipeDisplayEntry entry : collection.getAllRecipes()) {
                     List<ItemStack> stacks = entry.getStacks(SlotDisplayContexts.createParameters(MinecraftClient.getInstance().world));
                     if (!stacks.isEmpty()) {
@@ -481,11 +553,15 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
                     }
                 }
 
+                if(!matching.isEmpty()) {
+                    filteredList.add(collection);
+                }
+
             }
 
-            if (!matching.isEmpty()) {
-                filteredList.addAll(matching);
-            }
+            //if (!matching.isEmpty()) {
+            //    filteredList.addAll(matching);
+            //}
 
             if (filteringCraftable) {
                 filteredList.removeIf(rc -> !rc.hasCraftableRecipes());

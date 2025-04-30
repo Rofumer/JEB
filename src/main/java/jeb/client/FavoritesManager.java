@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Set;
 
 public class FavoritesManager {
-    private static final Path FAVORITES_PATH = Paths.get(MinecraftClient.getInstance().runDirectory.getAbsolutePath(), "config", "favorites.json");
+    private static final Path FAVORITES_PATH = Paths.get(MinecraftClient.getInstance().runDirectory.getAbsolutePath(), "config", "JEBfavorites.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static Set<Identifier> loadFavoriteItemIds() {
