@@ -19,6 +19,5 @@ public interface RecipeBookWidgetAccessor {
     @Accessor("tabButtons")
     List<?> getTabButtons();
     @Accessor("tabs")
-    List<RecipeBookWidget.Tab> gettabs();
-
+    List<RecipeBookWidget.Tab> getTabs();
 }

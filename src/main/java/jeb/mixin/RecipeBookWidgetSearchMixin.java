@@ -10,7 +10,9 @@ import net.minecraft.item.Items;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.recipe.NetworkRecipeId;
 import net.minecraft.recipe.book.RecipeBookCategories;
+import net.minecraft.client.recipebook.RecipeBookType;
 import net.minecraft.recipe.book.RecipeBookCategory;
+import net.minecraft.recipe.book.RecipeBookGroup;
 import net.minecraft.recipe.display.SlotDisplayContexts;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.registry.entry.RegistryEntry;
@@ -39,7 +41,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import net.minecraft.client.recipebook.RecipeBookType;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 
@@ -62,9 +66,67 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     private TextFieldWidget searchField;
 
 
+    @Shadow
+    @Final
+    private List<RecipeBookWidget.Tab> tabs;
+
+    @Shadow
+    @Final
+    private List<RecipeGroupButtonWidget> tabButtons;
+
+    @Inject(
+            method = "reset",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ljava/util/List;clear()V",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void injectCustomTab(CallbackInfo ci) {
+        RecipeBookWidget<?> self = (RecipeBookWidget<?>) (Object) this;
+
+        // Получаем текущий tabs через аксессор
+        List<RecipeBookWidget.Tab> originalTabs = ((RecipeBookWidgetAccessor) self).getTabs();
+
+        // Создаём копию, в которую можно добавлять
+        List<RecipeBookWidget.Tab> newTabs = new ArrayList<>(originalTabs);
+
+        RecipeBookType type = RecipeBookType.CRAFTING;
+        RecipeBookWidget.Tab newTab = new RecipeBookWidget.Tab(type);
+        //newTabs.add(newTab);
+
+        // Заменяем приватное поле через reflection
+        /*try {
+            Field field = RecipeBookWidget.class.getDeclaredField("tabs");
+            field.setAccessible(true);
+            field.set(self, newTabs);  // подменяем
+        } catch (Exception e) {
+            e.printStackTrace();
+        }*/
+
+        // Создаём кнопку вкладки
+        RecipeGroupButtonWidget tabButton = new RecipeGroupButtonWidget(newTab);
+        tabButton.setMessage(Text.of("Favorites"));
+        //tabButton.set;
+
+        this.tabButtons.add(tabButton);
+    }
+
+
+    /*@Unique
+    private boolean isFavoritesTabActive() {
+        if (currentTab == null) return false;
+
+        return tabButtons.stream()
+                .filter(button -> button.isSelected())
+                .anyMatch(button -> "Favorites".equals(button.getMessage().getString()));
+    }*/
+
     @Unique
     private boolean isFavoritesTabActive() {
-        return currentTab != null && currentTab.getCategory() == RecipeBookCategories.CAMPFIRE; // или замени CAMPFIRE на свою категорию
+        return currentTab != null
+                && currentTab.getMessage() != null
+                && "Favorites".equals(currentTab.getMessage().getString());
     }
 
 
@@ -401,8 +463,8 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         List<RecipeResultCollection> filteredList = Lists.newArrayList();
 
         // === Если на вкладке избранного (используем CAMPFIRE как временную категорию) ===
-        if (currentTab.getCategory() == RecipeBookCategories.CAMPFIRE) {
-            originalList = recipeBook.getOrderedResults();
+        if (isFavoritesTabActive()) {
+            originalList = recipeBook.getResultsForCategory(RecipeBookType.CRAFTING);
 
             Set<Identifier> favoriteItems = FavoritesManager.loadFavoriteItemIds();
 
@@ -423,6 +485,10 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
             if (!matching.isEmpty()) {
                 filteredList.addAll(matching);
+            }
+
+            if (filteringCraftable) {
+                filteredList.removeIf(rc -> !rc.hasCraftableRecipes());
             }
 
             recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
@@ -489,7 +555,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         return Optional.empty();
     }
 
-    @Inject(method = "reset", at = @At(value = "INVOKE", target = "Ljava/util/List;clear()V", shift = At.Shift.AFTER))
+    /*@Inject(method = "reset", at = @At(value = "INVOKE", target = "Ljava/util/List;clear()V", shift = At.Shift.AFTER))
     private void addNewTab(CallbackInfo ci) {
         RecipeBookWidget<?> recipeBookWidget = (RecipeBookWidget<?>) (Object) this;
 
@@ -515,6 +581,6 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             e.printStackTrace();
         }
 
-    }
+    }*/
 
 }
