@@ -1,5 +1,6 @@
 package jeb.mixin;
 
+import jeb.client.JEBClient;
 import net.minecraft.client.gui.screen.recipebook.AbstractCraftingRecipeBookWidget;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
 import net.minecraft.recipe.RecipeFinder;
@@ -14,9 +15,18 @@ public class AbstractCraftingRecipeBookWidgetMixin {
     @Inject(method = "populateRecipes", at = @At("HEAD"), cancellable = true)
     private void alwaysDisplayRecipes(RecipeResultCollection recipeResultCollection, RecipeFinder recipeFinder, CallbackInfo ci) {
         // вызываем вручную с заменённым фильтром
-        recipeResultCollection.populateRecipes(recipeFinder, recipe -> true);
 
-        // отменяем оригинальный вызов
-        ci.cancel();
+        if (JEBClient.customToggleEnabled) {
+
+            recipeResultCollection.populateRecipes(recipeFinder, recipe -> true);
+
+            // отменяем оригинальный вызов
+            ci.cancel();
+        }
+        else {
+            //recipeResultCollection.populateRecipes(recipeFinder, recipe -> false);
+            //ci.cancel();
+        }
+
     }
 }

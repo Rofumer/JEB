@@ -1,5 +1,8 @@
 package jeb.client;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -28,11 +31,26 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static net.minecraft.client.resource.language.I18n.translate;
 
 public class JEBClient implements ClientModInitializer {
+
+    public static boolean customToggleEnabled = true;
+
+    private static final Path CONFIG_PATH = Paths.get(
+            MinecraftClient.getInstance().runDirectory.getAbsolutePath(),
+            "config", "jeb.json"
+    );
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+
 
     private static KeyBinding keyBinding;
 
@@ -137,8 +155,40 @@ public class JEBClient implements ClientModInitializer {
     //    return NetworkRecipeIdEncoder.encode(id);
     //}
 
+    public static void loadConfig() {
+        try {
+            if (Files.exists(CONFIG_PATH)) {
+                try (FileReader reader = new FileReader(CONFIG_PATH.toFile())) {
+                    JsonObject json = GSON.fromJson(reader, JsonObject.class);
+                    if (json.has("customToggleEnabled")) {
+                        customToggleEnabled = json.get("customToggleEnabled").getAsBoolean();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void saveConfig() {
+        try {
+            JsonObject json = new JsonObject();
+            json.addProperty("customToggleEnabled", customToggleEnabled);
+
+            Files.createDirectories(CONFIG_PATH.getParent());
+            try (FileWriter writer = new FileWriter(CONFIG_PATH.toFile())) {
+                GSON.toJson(json, writer);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void onInitializeClient() {
+
+        loadConfig();
+        Runtime.getRuntime().addShutdownHook(new Thread(JEBClient::saveConfig));
 
         keyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "Optional recipes loading screen", // The translation key of the keybinding's name

@@ -89,14 +89,14 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
     @Unique
     private static final ButtonTextures TEXTURES_ALT = new ButtonTextures(
-            Identifier.of("jeb", "textures/gui/2x2_button.png"),
-            Identifier.of("jeb", "textures/gui/2x2_button_highlighted.png")
+            Identifier.ofVanilla("recipe_book/crafting_overlay"),
+            Identifier.ofVanilla("recipe_book/crafting_overlay_highlighted")
     );
 
     @Unique
     private static final ButtonTextures TEXTURES_DEFAULT = new ButtonTextures(
-            Identifier.of("jeb", "textures/gui/3x3_button.png"),
-            Identifier.of("jeb", "textures/gui/3x3_button_highlighted.png")
+            Identifier.ofVanilla("recipe_book/crafting_overlay_disabled"),
+            Identifier.ofVanilla("recipe_book/crafting_overlay_disabled_highlighted")
     );
 
 
@@ -106,8 +106,15 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         int y = this.toggleCraftableButton.getY()+125;
 
         jeb$customToggleButton = new ToggleButtonWidget(x, y, 20, 16, false);
-        jeb$customToggleButton.setTextures(TEXTURES_DEFAULT);
-        jeb$customToggleButton.setTooltip(Tooltip.of(Text.of("My Button")));
+        if(JEBClient.customToggleEnabled){
+            jeb$customToggleButton.setTooltip(Tooltip.of(Text.of("Show 3x3")));
+            jeb$customToggleButton.setTextures(TEXTURES_ALT);
+        }
+        else
+        {
+            jeb$customToggleButton.setTooltip(Tooltip.of(Text.of("Show 2x2")));
+            jeb$customToggleButton.setTextures(TEXTURES_DEFAULT);
+        }
         jeb$customToggleButton.setMessage(Text.of("!"));
         jeb$customToggleButton.visible = true;
 
@@ -134,11 +141,25 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         if (jeb$customToggleButton != null && jeb$customToggleButton.mouseClicked(mouseX, mouseY, button)) {
             jeb$customToggleState = !jeb$customToggleState;
             jeb$customToggleButton.setToggled(jeb$customToggleState);
+            JEBClient.customToggleEnabled = !JEBClient.customToggleEnabled;
 
+            JEBClient.saveConfig();
             // Меняем текстуру в зависимости от состояния
-            jeb$customToggleButton.setTextures(jeb$customToggleState ? TEXTURES_ALT : TEXTURES_DEFAULT);
+            jeb$customToggleButton.setTextures(JEBClient.customToggleEnabled ? TEXTURES_ALT : TEXTURES_DEFAULT);
+
+            jeb$customToggleButton.setTooltip(JEBClient.customToggleEnabled ? Tooltip.of(Text.of("Show 3x3")):Tooltip.of(Text.of("Show 2x2")));
 
             System.out.println("Кастомная кнопка: " + (jeb$customToggleState ? "включена" : "выключена"));
+
+            // Рефреш через reflection
+            try {
+                Method method = RecipeBookWidget.class.getDeclaredMethod("refresh");
+                method.setAccessible(true);
+                method.invoke(this);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
             cir.setReturnValue(true);
         }
     }
@@ -589,6 +610,10 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
                 }
             }
         }
+
+        //if(jeb$customToggleState) {
+        //    filteredList.removeIf((resultCollection) -> !resultCollection.hasDisplayableRecipes());
+        //}
 
         if (filteringCraftable) {
             filteredList.removeIf(rc -> !rc.hasCraftableRecipes());
