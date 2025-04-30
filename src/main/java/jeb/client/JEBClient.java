@@ -46,7 +46,7 @@ public class JEBClient implements ClientModInitializer {
 
     private static final Path CONFIG_PATH = Paths.get(
             MinecraftClient.getInstance().runDirectory.getAbsolutePath(),
-            "config", "jeb.json"
+            "config", "JEB.json"
     );
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 

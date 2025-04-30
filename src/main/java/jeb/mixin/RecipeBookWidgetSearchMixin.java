@@ -164,6 +164,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         }
     }
 
+
     @Inject(
             method = "reset",
             at = @At(
@@ -203,8 +204,41 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         //tabButton.set;
 
         this.tabButtons.add(tabButton);
+
     }
 
+    @Inject(
+            method = "reset",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/screen/recipebook/RecipeGroupButtonWidget;setToggled(Z)V",
+                    ordinal = 0,
+                    shift = At.Shift.BEFORE
+            )
+    )
+    private void jeb$replaceFavoritesAsDefaultTab(CallbackInfo ci) {
+        if (this.currentTab == tabButtons.get(0) && tabButtons.size() > 1) {
+            RecipeGroupButtonWidget maybeFavorites = tabButtons.get(0);
+            //if ("Favorites".equals(maybeFavorites.getMessage().getString())) {
+                // Сбросить подсветку со старой
+                //maybeFavorites.setToggled(true);
+                maybeFavorites.setToggled(true);
+
+            //this.refreshTabButtons(bl);
+
+            ((RecipeBookWidgetAccessor) this).jeb$populateAllRecipes();
+
+            ((RecipeBookWidgetAccessor) this).jeb$refreshTabButtons(true);
+
+                // Назначить новую
+                this.currentTab = tabButtons.get(1);
+
+            ((RecipeBookWidgetAccessor) this).jeb$populateAllRecipes();
+
+            ((RecipeBookWidgetAccessor) this).jeb$refreshTabButtons(true);
+            //}
+        }
+    }
 
     /*@Unique
     private boolean isFavoritesTabActive() {
