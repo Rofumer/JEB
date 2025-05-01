@@ -109,14 +109,23 @@ public class JEBClient implements ClientModInitializer {
             TooltipType tooltipType = TooltipType.Default.BASIC;
 
 
-            List<Text> tooltip = item.getDefaultStack().getTooltip(tooltipContext, client.player, tooltipType);
-            for (Text line : tooltip) {
-                String clean = Formatting.strip(line.getString()).toLowerCase(Locale.ROOT).trim();
-                if (clean.contains(query)) tooltip_bool = true;
-            }
+                try {
+                    List<Text> tooltip = item.getDefaultStack().getTooltip(tooltipContext, client.player, tooltipType);
+                    for (Text line : tooltip) {
+                        String clean = Formatting.strip(line.getString()).toLowerCase(Locale.ROOT).trim();
+                        if (clean.contains(query)) {
+                            tooltip_bool = true;
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    // Можно также записать лог или безопасно проигнорировать ошибку
+                }
+
             }
 
             if (!(name.contains(query) || id_item.contains(query) || key.contains(query) || tooltip_bool)) continue;
+            ///////if (!(name.contains(query) || id_item.contains(query) || key.contains(query))) continue;
 
 
             ///////if (!translate(item.getTranslationKey()).toLowerCase().contains(filter.toLowerCase())) continue;

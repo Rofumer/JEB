@@ -2,6 +2,7 @@ package jeb.mixin;
 
 import jeb.accessor.AnimatedResultButtonExtension;
 import jeb.accessor.ClientRecipeBookAccessor;
+import jeb.accessor.RecipeBookWidgetBridge;
 import jeb.client.FavoritesManager;
 import jeb.client.JEBClient;
 import net.minecraft.client.gui.DrawContext;
@@ -52,7 +53,16 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 @Mixin(RecipeBookWidget.class)
-public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreenHandler> {
+public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreenHandler> implements RecipeBookWidgetBridge {
+
+    // Это будет вызов приватного метода
+    @Shadow
+    private void refresh() {}
+
+    @Override
+    public void jeb$refresh() {
+        this.refresh();
+    }
 
     @Shadow @Final
     private ClientRecipeBook recipeBook;
@@ -149,16 +159,18 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
             jeb$customToggleButton.setTooltip(JEBClient.customToggleEnabled ? Tooltip.of(Text.of("Show 3x3")):Tooltip.of(Text.of("Show 2x2")));
 
-            System.out.println("Кастомная кнопка: " + (jeb$customToggleState ? "включена" : "выключена"));
+            //System.out.println("Кастомная кнопка: " + (jeb$customToggleState ? "включена" : "выключена"));
 
             // Рефреш через reflection
-            try {
+            /*try {
                 Method method = RecipeBookWidget.class.getDeclaredMethod("refresh");
                 method.setAccessible(true);
                 method.invoke(this);
             } catch (Exception e) {
                 e.printStackTrace();
-            }
+            }*/
+
+            ((RecipeBookWidgetBridge) this).jeb$refresh();
 
             cir.setReturnValue(true);
         }
@@ -253,18 +265,19 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         if (keyCode == GLFW.GLFW_KEY_A) {
             AnimatedResultButton hovered = ((RecipeBookResultsAccessor) recipesArea).getHoveredResultButton();
             if (hovered != null) {
-                System.out.println("Над кнопкой: " + hovered.getDisplayStack().getItem().toString());
+                //System.out.println("Над кнопкой: " + hovered.getDisplayStack().getItem().toString());
                 //ItemStack stack = hovered.getDisplayStack();
                 if (isFavoritesTabActive()) {
                     FavoritesManager.removeFavorite(hovered.getDisplayStack());
                     // Рефреш через reflection
-                    try {
+                    /*try {
                         Method method = RecipeBookWidget.class.getDeclaredMethod("refresh");
                         method.setAccessible(true);
                         method.invoke(this);
                     } catch (Exception e) {
                         e.printStackTrace();
-                    }
+                    }*/
+                    ((RecipeBookWidgetBridge) this).jeb$refresh();
                 } else {
                     FavoritesManager.saveFavorite(hovered.getDisplayStack());
                 }
@@ -546,10 +559,15 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         Item.TooltipContext tooltipContext = Item.TooltipContext.create(lookup);
         TooltipType tooltipType = TooltipType.Default.BASIC;
 
+        try {
         List<Text> tooltip = stack.getTooltip(tooltipContext, client.player, tooltipType);
         for (Text line : tooltip) {
             String clean = Formatting.strip(line.getString()).toLowerCase(Locale.ROOT).trim();
             if (clean.contains(query)) return true;
+        }
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Можно также записать лог или безопасно проигнорировать ошибку
         }
 
         return false;
@@ -608,9 +626,9 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             //    filteredList.addAll(matching);
             //}
 
-            if (filteringCraftable) {
-                filteredList.removeIf(rc -> !rc.hasCraftableRecipes());
-            }
+            //if (filteringCraftable) {
+            //    filteredList.removeIf(rc -> !rc.hasCraftableRecipes());
+            //}
 
             recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
             ci.cancel();

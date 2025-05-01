@@ -94,7 +94,7 @@ public class FavoritesManager {
             }
 
             if (removed) {
-                System.out.println("Удалено из избранного: " + itemId.toString() + " на сервере/мире: " + server);
+                //System.out.println("Удалено из избранного: " + itemId.toString() + " на сервере/мире: " + server);
             }
 
         } catch (Exception e) {
@@ -153,9 +153,9 @@ public class FavoritesManager {
                     GSON.toJson(favorites, writer);
                 }
 
-                System.out.println("Добавлен в избранное: " + itemId.toString() + " на сервере/мире: " + server);
+                //System.out.println("Добавлен в избранное: " + itemId.toString() + " на сервере/мире: " + server);
             } else {
-                System.out.println("Уже есть в избранном: " + itemId.toString() + " на сервере/мире: " + server);
+                //System.out.println("Уже есть в избранном: " + itemId.toString() + " на сервере/мире: " + server);
             }
 
         } catch (Exception e) {
