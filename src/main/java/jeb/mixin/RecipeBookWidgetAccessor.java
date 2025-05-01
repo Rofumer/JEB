@@ -20,4 +20,8 @@ public interface RecipeBookWidgetAccessor {
     List<?> getTabButtons();
     @Accessor("tabs")
     List<RecipeBookWidget.Tab> getTabs();
+    @Invoker("refreshTabButtons")
+    void jeb$refreshTabButtons(boolean filteringCraftable);
+    @Invoker("populateAllRecipes")
+    void jeb$populateAllRecipes();
 }

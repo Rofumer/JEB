@@ -165,7 +165,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     }
 
 
-    @Inject(
+    /*@Inject(
             method = "reset",
             at = @At(
                     value = "INVOKE",
@@ -174,40 +174,29 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             )
     )
     private void injectCustomTab(CallbackInfo ci) {
-        RecipeBookWidget<?> self = (RecipeBookWidget<?>) (Object) this;
 
-        // Получаем текущий tabs через аксессор
-        List<RecipeBookWidget.Tab> originalTabs = ((RecipeBookWidgetAccessor) self).getTabs();
-
-        // Создаём копию, в которую можно добавлять
-        List<RecipeBookWidget.Tab> newTabs = new ArrayList<>(originalTabs);
-
-        //RecipeBookType type = RecipeBookType.CRAFTING;
-        //RecipeBookWidget.Tab newTab = new RecipeBookWidget.Tab(type);
-        RecipeBookWidget.Tab newTab = new RecipeBookWidget.Tab(Items.WRITABLE_BOOK, RecipeBookCategories.CAMPFIRE);
-        //RecipeGroupButtonWidget tabButton = new RecipeGroupButtonWidget(customTab);
-        //newTabs.add(newTab);
-
-        // Заменяем приватное поле через reflection
-        /*try {
-            Field field = RecipeBookWidget.class.getDeclaredField("tabs");
-            field.setAccessible(true);
-            field.set(self, newTabs);  // подменяем
-        } catch (Exception e) {
-            e.printStackTrace();
-        }*/
 
         // Создаём кнопку вкладки
+        RecipeBookWidget.Tab newTab = new RecipeBookWidget.Tab(Items.WRITABLE_BOOK, RecipeBookCategories.CAMPFIRE);
         RecipeGroupButtonWidget tabButton = new RecipeGroupButtonWidget(newTab);
         tabButton.setMessage(Text.of("Favorites"));
 
-        //tabButton.set;
 
         this.tabButtons.add(tabButton);
 
-    }
+    }*/
 
-    @Inject(
+    /*@Inject(method = "<init>", at = @At("RETURN"))
+    private void injectAfterConstructor(T craftingScreenHandler, List<RecipeBookWidget.Tab> tabs, CallbackInfo ci) {
+
+        RecipeBookWidget.Tab newTab = new RecipeBookWidget.Tab(Items.WRITABLE_BOOK, RecipeBookCategories.CAMPFIRE);
+        //RecipeGroupButtonWidget tabButton = new RecipeGroupButtonWidget(newTab);
+        //tabButton.setMessage(Text.of("Favorites"));
+        this.tabs.add(newTab);
+
+    }*/
+
+    /*@Inject(
             method = "reset",
             at = @At(
                     value = "INVOKE",
@@ -238,7 +227,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             ((RecipeBookWidgetAccessor) this).jeb$refreshTabButtons(true);
             //}
         }
-    }
+    }*/
 
     /*@Unique
     private boolean isFavoritesTabActive() {
@@ -251,9 +240,10 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
     @Unique
     private boolean isFavoritesTabActive() {
-        return currentTab != null
-                && currentTab.getMessage() != null
-                && "Favorites".equals(currentTab.getMessage().getString());
+        //return currentTab != null
+        //        && currentTab.getMessage() != null
+        //        && "Favorites".equals(currentTab.getMessage().getString());
+        return currentTab.getCategory() == RecipeBookCategories.CAMPFIRE;
     }
 
 
