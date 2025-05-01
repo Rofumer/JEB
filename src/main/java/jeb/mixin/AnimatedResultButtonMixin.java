@@ -1,7 +1,9 @@
 package jeb.mixin;
 
 import jeb.accessor.AnimatedResultButtonExtension;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.recipebook.AnimatedResultButton;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
 import net.minecraft.item.ItemStack;
@@ -15,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -58,11 +61,30 @@ public class AnimatedResultButtonMixin implements AnimatedResultButtonExtension 
     @Unique
     private static final Text MORE_RECIPES_TEXT = Text.translatable("items.craftsfromitem");
 
-    @Inject(method = "getTooltip", at = @At("RETURN"), cancellable = true)
+    /*@Inject(method = "getTooltip", at = @At("RETURN"), cancellable = true)
     private void injectAlwaysAddTooltip(ItemStack stack, CallbackInfoReturnable<List<Text>> cir) {
         List<Text> list = cir.getReturnValue();
+        try{
         list.add(MORE_RECIPES_TEXT); // всегда добавляем
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Можно также записать лог или безопасно проигнорировать ошибку
+        }
         cir.setReturnValue(list);    // возвращаем изменённый список
+    }*/
+
+    @Inject(method = "getTooltip", at = @At("HEAD"), cancellable = true)
+    private void onGetTooltip(ItemStack stack, CallbackInfoReturnable<List<Text>> cir) {
+        try {
+            List<Text> list = new ArrayList<>(Screen.getTooltipFromItem(MinecraftClient.getInstance(), stack));
+
+            list.add(MORE_RECIPES_TEXT);
+
+            cir.setReturnValue(list);
+        } catch (Exception e) {
+            e.printStackTrace();
+            cir.setReturnValue(List.of(Text.literal("§c[Error rendering tooltip]")));
+        }
     }
 }
 
