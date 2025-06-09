@@ -13,6 +13,7 @@ import net.minecraft.recipe.RecipeDisplayEntry;
 import net.minecraft.recipe.display.RecipeDisplay;
 import net.minecraft.recipe.display.ShapedCraftingRecipeDisplay;
 import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
+import net.minecraft.registry.Registries;
 import net.minecraft.screen.AbstractCraftingScreenHandler;
 import net.minecraft.util.context.ContextParameterMap;
 import org.jetbrains.annotations.Nullable;
@@ -72,7 +73,8 @@ public class RecipeBookResultsMixin {
 
             if (button == 2) {
                 ItemStack stack = animatedResultButton.getDisplayStack();
-                String itemName = stack.getItem().asItem().toString(); // Локализованное имя (например, "Булыжник")
+                //String itemName = stack.getItem().asItem().toString();
+                String itemName = Registries.ITEM.getId(stack.getItem()).getPath().toLowerCase(Locale.ROOT);
                 String searchText = "~" + itemName.toLowerCase(Locale.ROOT);
 
 // Устанавливаем в поиск

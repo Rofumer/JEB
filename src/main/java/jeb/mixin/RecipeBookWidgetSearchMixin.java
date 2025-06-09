@@ -649,7 +649,8 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
                     List<ItemStack> stacks = resultSlot.getStacks(context);
                     ItemStack result = stacks.get(0);
-                    String resultName = result.getItem().toString().toLowerCase(Locale.ROOT);
+                    //String resultName = result.getItem().toString().toLowerCase(Locale.ROOT);
+                    String resultName = Registries.ITEM.getId(result.getItem()).getPath().toLowerCase(Locale.ROOT);
 
                     if (resultName.equals(query)) {
                         for (Ingredient ingredient : recipe.craftingRequirements().get()) {
