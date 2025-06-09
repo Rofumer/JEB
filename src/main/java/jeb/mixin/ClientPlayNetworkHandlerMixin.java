@@ -55,12 +55,6 @@ public abstract class ClientPlayNetworkHandlerMixin {
             existingResultItems.add(stack.getItem());
         }
 
-        for (Item item : Registries.ITEM) {
-            if (item == Items.AIR) continue;
-            if (existingResultItems.contains(item)) continue;
-            nonexistingResultItems.add(item);
-        }
-
         // Можно сделать что угодно с display — лог, анализ, модификация
         // System.out.println("Получен display: " + display);
     }
@@ -125,6 +119,12 @@ public abstract class ClientPlayNetworkHandlerMixin {
                     throw new RuntimeException(e);
                 }
 
+            }
+
+            for (Item item : Registries.ITEM) {
+                if (item == Items.AIR) continue;
+                if (existingResultItems.contains(item)) continue;
+                nonexistingResultItems.add(item);
             }
 
         }
