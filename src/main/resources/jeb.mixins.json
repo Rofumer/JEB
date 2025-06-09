@@ -8,6 +8,8 @@
     "RecipeBookResultsMixin",
     "ServerRecipeBookMixin"
   ],
+  "server": [
+  ],
   "client": [
     "AbstractCraftingRecipeBookWidgetMixin",
     "AnimatedResultButtonMixin",

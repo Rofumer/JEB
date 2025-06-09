@@ -1,6 +1,7 @@
 package jeb.mixin;
 
 import net.minecraft.client.gui.screen.recipebook.RecipeBookWidget;
+import net.minecraft.client.gui.screen.recipebook.RecipeGroupButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.screen.AbstractCraftingScreenHandler;
 import org.spongepowered.asm.mixin.Mixin;
@@ -24,4 +25,8 @@ public interface RecipeBookWidgetAccessor {
     void jeb$refreshTabButtons(boolean filteringCraftable);
     @Invoker("populateAllRecipes")
     void jeb$populateAllRecipes();
+    @Accessor("currentTab")
+    RecipeGroupButtonWidget getSelectedTab();
+    @Accessor("currentTab")
+    void setSelectedTab(RecipeGroupButtonWidget tab);
 }

@@ -1,5 +1,6 @@
 package jeb.mixin;
 
+import com.llamalad7.mixinextras.sugar.Local;
 import jeb.accessor.ClientRecipeBookAccessor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.recipebook.*;
@@ -44,6 +45,9 @@ public class RecipeBookResultsMixin {
     @Nullable
     private RecipeResultCollection resultCollection;
 
+    @Shadow
+    private AnimatedResultButton hoveredResultButton;
+
     @Inject(
             method = "mouseClicked",
             at = @At(
@@ -51,19 +55,34 @@ public class RecipeBookResultsMixin {
                     target = "Lnet/minecraft/client/gui/screen/recipebook/AnimatedResultButton;mouseClicked(DDI)Z",
                     shift = At.Shift.AFTER
             ),
-            locals = LocalCapture.CAPTURE_FAILHARD,
             cancellable = true
     )
     private void onRightClickInject(
             double mouseX, double mouseY, int button,
             int areaLeft, int areaTop, int areaWidth, int areaHeight,
             CallbackInfoReturnable<Boolean> cir,
-            ContextParameterMap contextParameterMap,
-            Iterator<AnimatedResultButton> iterator,
-            AnimatedResultButton animatedResultButton
+            @Local ContextParameterMap contextParameterMap,
+            @Local AnimatedResultButton animatedResultButton
     ) {
 
-        if (animatedResultButton.mouseClicked(mouseX, mouseY, button)) {
+        animatedResultButton = hoveredResultButton;
+        if (animatedResultButton  != null) {
+        //if (animatedResultButton.mouseClicked(mouseX, mouseY, button)) {
+
+
+            if (button == 2) {
+                ItemStack stack = animatedResultButton.getDisplayStack();
+                String itemName = stack.getItem().asItem().toString(); // Локализованное имя (например, "Булыжник")
+                String searchText = "~" + itemName.toLowerCase(Locale.ROOT);
+
+// Устанавливаем в поиск
+                ((RecipeBookWidgetAccessor) recipeBookWidget).getSearchField().setText(searchText);
+                ((RecipeBookWidgetAccessor) recipeBookWidget).setSelectedTab((RecipeGroupButtonWidget) ((RecipeBookWidgetAccessor) recipeBookWidget).getTabButtons().get(0));
+                ((RecipeBookWidgetAccessor) recipeBookWidget).invokeReset();
+
+                cir.setReturnValue(true);
+                cir.cancel();
+            }
 
             if (button == 1) {
                 ItemStack stack = animatedResultButton.getDisplayStack();
@@ -72,6 +91,7 @@ public class RecipeBookResultsMixin {
 
 // Устанавливаем в поиск
                 ((RecipeBookWidgetAccessor) recipeBookWidget).getSearchField().setText(searchText);
+                ((RecipeBookWidgetAccessor) recipeBookWidget).setSelectedTab((RecipeGroupButtonWidget) ((RecipeBookWidgetAccessor) recipeBookWidget).getTabButtons().get(0));
                 ((RecipeBookWidgetAccessor) recipeBookWidget).invokeReset();
 
                 cir.setReturnValue(true);

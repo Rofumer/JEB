@@ -1,12 +1,11 @@
 package jeb.client;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 
@@ -14,10 +13,7 @@ import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class FavoritesManager {
     private static final Path FAVORITES_PATH = Paths.get(MinecraftClient.getInstance().runDirectory.getAbsolutePath(), "config", "JEBfavorites.json");
@@ -29,11 +25,7 @@ public class FavoritesManager {
             if (!Files.exists(FAVORITES_PATH)) return result;
 
             JsonArray array = GSON.fromJson(Files.newBufferedReader(FAVORITES_PATH), JsonArray.class);
-            String server = MinecraftClient.getInstance().getCurrentServerEntry() != null
-                    ? MinecraftClient.getInstance().getCurrentServerEntry().address
-                    : MinecraftClient.getInstance().getServer() != null
-                    ? MinecraftClient.getInstance().getServer().getSaveProperties().getLevelName()
-                    : "singleplayer";
+            String server = getServerName();
 
             for (JsonElement el : array) {
                 JsonObject obj = el.getAsJsonObject();
@@ -49,52 +41,35 @@ public class FavoritesManager {
         return result;
     }
 
-
     public static void removeFavorite(ItemStack stack) {
         try {
-            // Определяем имя сервера или мира
-            String server;
-            if (MinecraftClient.getInstance().getCurrentServerEntry() != null) {
-                server = MinecraftClient.getInstance().getCurrentServerEntry().address;
-            } else if (MinecraftClient.getInstance().getServer() != null) {
-                server = MinecraftClient.getInstance().getServer().getSaveProperties().getLevelName();
-            } else {
-                server = "unknown_local_world";
-            }
-
-            // Определяем ID предмета
+            String server = getServerName();
             Identifier itemId = Registries.ITEM.getId(stack.getItem());
+            String nbtString = getSerializedNbt(stack);
 
-            // Читаем файл
-            if (!Files.exists(FAVORITES_PATH)) {
-                return; // Нечего удалять
-            }
+            if (!Files.exists(FAVORITES_PATH)) return;
 
             JsonArray favorites = GSON.fromJson(Files.newBufferedReader(FAVORITES_PATH), JsonArray.class);
             JsonArray newFavorites = new JsonArray();
-
             boolean removed = false;
 
             for (JsonElement element : favorites) {
                 JsonObject obj = element.getAsJsonObject();
                 boolean sameServer = server.equals(obj.get("server").getAsString());
                 boolean sameItem = itemId.toString().equals(obj.get("item").getAsString());
+                String nbtInFile = obj.has("nbt") ? obj.get("nbt").getAsString() : "";
+                boolean sameNbt = nbtString.equals(nbtInFile);
 
-                if (sameServer && sameItem && !removed) {
-                    removed = true; // Пропустить первую найденную запись
+                if (sameServer && sameItem && sameNbt && !removed) {
+                    removed = true;
                     continue;
                 }
                 newFavorites.add(obj);
             }
 
-            // Пишем обратно
             Files.createDirectories(FAVORITES_PATH.getParent());
             try (FileWriter writer = new FileWriter(FAVORITES_PATH.toFile())) {
                 GSON.toJson(newFavorites, writer);
-            }
-
-            if (removed) {
-                //System.out.println("Удалено из избранного: " + itemId.toString() + " на сервере/мире: " + server);
             }
 
         } catch (Exception e) {
@@ -102,60 +77,45 @@ public class FavoritesManager {
         }
     }
 
-
     public static void saveFavorite(ItemStack stack) {
         try {
-            // Определяем имя сервера или мира
-            String server;
-            if (MinecraftClient.getInstance().getCurrentServerEntry() != null) {
-                server = MinecraftClient.getInstance().getCurrentServerEntry().address;
-            } else if (MinecraftClient.getInstance().getServer() != null) {
-                server = MinecraftClient.getInstance().getServer().getSaveProperties().getLevelName();
-            } else {
-                server = "unknown_local_world";
-            }
-
-            // Определяем ID предмета
+            String server = getServerName();
             Identifier itemId = Registries.ITEM.getId(stack.getItem());
+            String nbtString = getSerializedNbt(stack);
 
-            // Читаем текущие избранные или создаём новый массив
-            JsonArray favorites;
-            if (Files.exists(FAVORITES_PATH)) {
-                favorites = GSON.fromJson(Files.newBufferedReader(FAVORITES_PATH), JsonArray.class);
-            } else {
-                favorites = new JsonArray();
-            }
+            JsonArray favorites = Files.exists(FAVORITES_PATH)
+                    ? GSON.fromJson(Files.newBufferedReader(FAVORITES_PATH), JsonArray.class)
+                    : new JsonArray();
 
-            // Проверка на наличие дубликата
             boolean alreadyExists = false;
+
             for (JsonElement element : favorites) {
                 JsonObject obj = element.getAsJsonObject();
-                if (server.equals(obj.get("server").getAsString()) &&
-                        itemId.toString().equals(obj.get("item").getAsString())) {
+                boolean sameServer = server.equals(obj.get("server").getAsString());
+                boolean sameItem = itemId.toString().equals(obj.get("item").getAsString());
+                String nbtInFile = obj.has("nbt") ? obj.get("nbt").getAsString() : "";
+                boolean sameNbt = nbtString.equals(nbtInFile);
+
+                if (sameItem && sameServer && sameNbt) {
                     alreadyExists = true;
                     break;
                 }
             }
 
             if (!alreadyExists) {
-                // Добавляем новую запись
                 JsonObject favoriteEntry = new JsonObject();
                 favoriteEntry.addProperty("server", server);
                 favoriteEntry.addProperty("item", itemId.toString());
+                if (!nbtString.isEmpty()) {
+                    favoriteEntry.addProperty("nbt", nbtString);
+                }
                 favorites.add(favoriteEntry);
-
-                // Сортируем для удобства
                 favorites = sortFavorites(favorites);
 
-                // Пишем обратно в файл
                 Files.createDirectories(FAVORITES_PATH.getParent());
                 try (FileWriter writer = new FileWriter(FAVORITES_PATH.toFile())) {
                     GSON.toJson(favorites, writer);
                 }
-
-                //System.out.println("Добавлен в избранное: " + itemId.toString() + " на сервере/мире: " + server);
-            } else {
-                //System.out.println("Уже есть в избранном: " + itemId.toString() + " на сервере/мире: " + server);
             }
 
         } catch (Exception e) {
@@ -177,4 +137,46 @@ public class FavoritesManager {
         }
         return sortedArray;
     }
+
+    private static String getServerName() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.getCurrentServerEntry() != null) {
+            return client.getCurrentServerEntry().address;
+        } else if (client.getServer() != null) {
+            return client.getServer().getSaveProperties().getLevelName();
+        } else {
+            return "unknown_local_world";
+        }
+    }
+
+
+    private static String getSerializedNbt(ItemStack stack) {
+        NbtCompound result = new NbtCompound();
+
+        var blockEntityData = stack.get(net.minecraft.component.DataComponentTypes.BLOCK_ENTITY_DATA);
+        if (blockEntityData != null && !blockEntityData.copyNbt().isEmpty()) {
+            result.copyFrom(blockEntityData.copyNbt());
+        }
+
+        var customData = stack.get(net.minecraft.component.DataComponentTypes.CUSTOM_NAME);
+        if (customData != null && !customData.getString().isEmpty()) {
+            return customData.getString();
+        }
+
+        var bucketEntityData = stack.get(net.minecraft.component.DataComponentTypes.BUCKET_ENTITY_DATA);
+        if (bucketEntityData != null && !bucketEntityData.copyNbt().isEmpty()) {
+            result.copyFrom(bucketEntityData.copyNbt());
+        }
+
+        var entityData = stack.get(net.minecraft.component.DataComponentTypes.ENTITY_DATA);
+        if (entityData != null && !entityData.copyNbt().isEmpty()) {
+            result.copyFrom(entityData.copyNbt());
+        }
+
+        //return result.isEmpty() ? "" : result.toString();
+        return "";
+    }
+
+
+
 }

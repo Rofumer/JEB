@@ -5,12 +5,14 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.recipebook.ClientRecipeBook;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
 import net.minecraft.recipe.RecipeDisplayEntry;
 import net.minecraft.recipe.display.SlotDisplay;
 import net.minecraft.recipe.display.SlotDisplayContexts;
+import net.minecraft.registry.Registries;
 import net.minecraft.util.context.ContextParameterMap;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -23,8 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
-import static jeb.client.JEBClient.existingResultItems;
-import static jeb.client.JEBClient.recipesLoaded;
+import static jeb.client.JEBClient.*;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public abstract class ClientPlayNetworkHandlerMixin {
@@ -52,6 +53,12 @@ public abstract class ClientPlayNetworkHandlerMixin {
         // Добавляем в Set
         if(entry.contents().display().craftingStation().getStacks(context).getFirst().getItem() == Items.CRAFTING_TABLE) {
             existingResultItems.add(stack.getItem());
+        }
+
+        for (Item item : Registries.ITEM) {
+            if (item == Items.AIR) continue;
+            if (existingResultItems.contains(item)) continue;
+            nonexistingResultItems.add(item);
         }
 
         // Можно сделать что угодно с display — лог, анализ, модификация
