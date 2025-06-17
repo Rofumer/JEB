@@ -65,7 +65,8 @@ public class RecipeLoader {
     }
 
     public static void loadRecipesFromLog() throws IOException {
-        String name = "recipes_" + SharedConstants.getGameVersion().getName() + ".txt";
+        //String name = "recipes_" + SharedConstants.getGameVersion().getName() + ".txt";
+        String name = "recipes_" + SharedConstants.getGameVersion().name() + ".txt";
         try (InputStream input = RecipeLoader.class.getClassLoader().getResourceAsStream(name)) {
             if (input == null) {
                 System.err.println("Не удалось найти файл " + name + " в ресурсах");
@@ -801,10 +802,15 @@ public class RecipeLoader {
                             String[] splitItem = itemName.split(":");
                             String namespace = splitItem.length == 2 ? splitItem[0] : "minecraft";
                             String path = splitItem[splitItem.length - 1];
+                            try {
                             Identifier id = Identifier.of(namespace, path);
                             Item item = Registries.ITEM.get(id);
                             if (item != Items.AIR) {
                                 alternatives.add(item);
+                            }
+                            } catch (Exception e) {
+                                System.err.println("Ошибка при создании Identifier! line: " + line + " | namespace: " + namespace + " | path: " + path);
+                                e.printStackTrace();
                             }
                         }
                     }

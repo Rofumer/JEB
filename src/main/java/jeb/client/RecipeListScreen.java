@@ -48,6 +48,8 @@ public class RecipeListScreen extends Screen {
     protected void init() {
         super.init();
 
+
+        /// ---
         // Используем builder для создания кнопки
         /*this.addDrawableChild(ButtonWidget.builder(Text.of("Show All Recipes"), button -> {
                     try {
@@ -58,6 +60,7 @@ public class RecipeListScreen extends Screen {
                 }).position(this.width / 2 - 100, this.height / 2 - 20)
                 .size(200, 20)
                 .build());*/
+        /// ---
 
         this.addDrawableChild(ButtonWidget.builder(Text.of("Load All Recipes"), button -> {
                     try {
