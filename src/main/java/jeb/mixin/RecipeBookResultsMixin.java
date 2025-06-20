@@ -66,6 +66,11 @@ public class RecipeBookResultsMixin {
             @Local AnimatedResultButton animatedResultButton
     ) {
 
+        if (!(MinecraftClient.getInstance().player.currentScreenHandler instanceof AbstractCraftingScreenHandler)) {
+            // Не наш контейнер — не трогаем, пусть работает обычный код!
+            return;
+        }
+
         animatedResultButton = hoveredResultButton;
         if (animatedResultButton  != null) {
         //if (animatedResultButton.mouseClicked(mouseX, mouseY, button)) {
