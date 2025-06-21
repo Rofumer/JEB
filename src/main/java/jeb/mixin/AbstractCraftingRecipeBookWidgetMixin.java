@@ -24,8 +24,10 @@ public class AbstractCraftingRecipeBookWidgetMixin {
     private void alwaysDisplayRecipes(RecipeResultCollection recipeResultCollection, RecipeFinder recipeFinder, CallbackInfo ci) {
         // вызываем вручную с заменённым фильтром
 
-        if((((RecipeBookWidgetAccessor) this).getSearchField().isActive() && ((RecipeBookWidgetAccessor) this).getSearchField().isVisible() && ((RecipeBookWidgetAccessor) this).getSearchField().isFocused())) {
-           ci.cancel();
+        // Безопасно работаем с searchField
+        var searchField = ((RecipeBookWidgetAccessor) this).getSearchField();
+        if (searchField != null && searchField.isActive() && searchField.isVisible() && searchField.isFocused()) {
+            ci.cancel();
         }
 
         if (JEBClient.customToggleEnabled) {
