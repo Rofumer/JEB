@@ -66,10 +66,10 @@ public class RecipeBookResultsMixin {
             @Local AnimatedResultButton animatedResultButton
     ) {
 
-        if (!(MinecraftClient.getInstance().player.currentScreenHandler instanceof AbstractCraftingScreenHandler)) {
+        //if (!(MinecraftClient.getInstance().player.currentScreenHandler instanceof AbstractCraftingScreenHandler)) {
             // Не наш контейнер — не трогаем, пусть работает обычный код!
-            return;
-        }
+        //    return;
+        //}
 
         animatedResultButton = hoveredResultButton;
         if (animatedResultButton  != null) {
@@ -108,6 +108,11 @@ public class RecipeBookResultsMixin {
 
             if (button == 0) {
 
+
+                if (!(MinecraftClient.getInstance().player.currentScreenHandler instanceof AbstractCraftingScreenHandler)) {
+                    // Не наш контейнер — не трогаем, пусть работает обычный код!
+                    return;
+                }
 
                 //System.out.println(animatedResultButton.getCurrentId().toString());
 

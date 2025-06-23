@@ -109,8 +109,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
             }
             // }
 
-            if (knownRecipeCount < 1358 && craftingStationId == 259) {
-            //if (knownRecipeCount < 1358 && craftingStationId == 262) {
+            //if (knownRecipeCount < 1358 && craftingStationId == 259) {
+            if (knownRecipeCount < 1358 && craftingStationId == 262) {
 
                 try {
                     RecipeLoader.loadRecipesFromLog();
@@ -121,6 +121,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
                 }
 
             }
+
+            nonexistingResultItems.clear();
 
             for (Item item : Registries.ITEM) {
                 if (item == Items.AIR) continue;

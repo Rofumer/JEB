@@ -8,6 +8,8 @@ import jeb.client.JEBClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ButtonTextures;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.ingame.CraftingScreen;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.screen.recipebook.*;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ToggleButtonWidget;
@@ -748,7 +750,14 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             filtered = JEBClient.generateCustomRecipeList(rawInput);
         }
 
-        filteredList.addAll(filtered);
+        Screen screen = client.currentScreen;
+
+        //if (screen instanceof CraftingScreen || screen instanceof InventoryScreen provider)
+        //{
+            if (!toggleCraftableButton.isToggled()) {
+                filteredList.addAll(filtered);
+            }
+        //}
 
         //if(!(((RecipeBookWidgetAccessor) this).getSearchField().isActive() && ((RecipeBookWidgetAccessor) this).getSearchField().isVisible() && ((RecipeBookWidgetAccessor) this).getSearchField().isFocused())) {
         //    filteredList.forEach(result ->
