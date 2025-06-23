@@ -5,6 +5,7 @@ import net.minecraft.network.packet.s2c.play.RecipeBookSettingsS2CPacket;
 import net.minecraft.recipe.Recipe;
 import net.minecraft.recipe.RecipeEntry;
 import net.minecraft.recipe.book.RecipeBook;
+import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -47,6 +48,10 @@ public abstract class ServerRecipeBookMixin {
 
             collector.displaysForRecipe(recipeKey, display -> {
                 // Можно фильтровать, например, по display или recipeEntry
+                if (Registries.RECIPE_DISPLAY.getId(display.display().serializer()) == null) {
+                    System.out.println("[JEB Debug] Skipping unknown recipe display: " + display.getClass().getName());
+                    return;
+                }
                 allEntries.add(new RecipeBookAddS2CPacket.Entry(display, false, false));
             });
         }

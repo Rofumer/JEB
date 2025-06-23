@@ -65,8 +65,8 @@ public class RecipeLoader {
     }
 
     public static void loadRecipesFromLog() throws IOException {
-        //String name = "recipes_" + SharedConstants.getGameVersion().getName() + ".txt";
-        String name = "recipes_" + SharedConstants.getGameVersion().name() + ".txt";
+        String name = "recipes_" + SharedConstants.getGameVersion().getName() + ".txt";
+        //String name = "recipes_" + SharedConstants.getGameVersion().name() + ".txt";
         try (InputStream input = RecipeLoader.class.getClassLoader().getResourceAsStream(name)) {
             if (input == null) {
                 System.err.println("Не удалось найти файл " + name + " в ресурсах");
@@ -297,24 +297,24 @@ public class RecipeLoader {
                                 .orElse(null);
 
                         //1.21.5
-                        if (patternEntry != null) {
+                        /*if (patternEntry != null) {
                             resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
                                     new SlotDisplay.TagSlotDisplay(baseTagKey),
                                     new SlotDisplay.TagSlotDisplay(materialTagKey),
                                     patternEntry
                             );
-                        }
+                        }*/
                         //
                     }
                     //1.21.4
-                    /*else  {
+                    else  {
                         patternId = trimResultMatcher.group(6);
                         resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
                                 new SlotDisplay.TagSlotDisplay(baseTagKey),
                                 new SlotDisplay.TagSlotDisplay(materialTagKey),
                                 new SlotDisplay.CompositeSlotDisplay(List.of(new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", patternId))))));
 
-                    }*/
+                    }
                     //
 
                 }
