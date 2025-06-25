@@ -65,8 +65,8 @@ public class RecipeLoader {
     }
 
     public static void loadRecipesFromLog() throws IOException {
-        //String name = "recipes_" + SharedConstants.getGameVersion().getName() + ".txt";
-        String name = "recipes_" + SharedConstants.getGameVersion().name() + ".txt";
+        String name = "recipes_" + SharedConstants.getGameVersion().getName() + ".txt";
+        //String name = "recipes_" + SharedConstants.getGameVersion().name() + ".txt";
         try (InputStream input = RecipeLoader.class.getClassLoader().getResourceAsStream(name)) {
             if (input == null) {
                 System.err.println("Не удалось найти файл " + name + " в ресурсах");
@@ -296,7 +296,7 @@ public class RecipeLoader {
                                 .getEntry(Identifier.of("minecraft", patternId))
                                 .orElse(null);
 
-                        //1.21.5
+                        //1.21.5,1.21.6
                         if (patternEntry != null) {
                             resultSlot = new SlotDisplay.SmithingTrimSlotDisplay(
                                     new SlotDisplay.TagSlotDisplay(baseTagKey),
@@ -960,6 +960,10 @@ public class RecipeLoader {
 
         List<ItemStack> stacks = resultSlot.getStacks(context);
 
+        if (stacks.isEmpty()) {
+            System.err.println("Warning: Empty stacks for resultSlot in recipe " + entry);
+            return; // или можно continue, если это цикл, или просто не делать ничего дальше
+        }
 
         ItemStack stack = stacks.get(0);
 
