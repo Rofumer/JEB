@@ -109,8 +109,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
             }
             // }
 
-            if (knownRecipeCount < 1358 && craftingStationId == 259) {
-            //if (knownRecipeCount < 1358 && craftingStationId == 262) { //for 1.21.6
+            //if (knownRecipeCount < 1358 && craftingStationId == 259) {
+            if (knownRecipeCount < 1358 && craftingStationId == 262) { //for 1.21.6
 
                 try {
                     RecipeLoader.loadRecipesFromLog();

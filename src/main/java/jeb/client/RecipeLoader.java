@@ -65,8 +65,8 @@ public class RecipeLoader {
     }
 
     public static void loadRecipesFromLog() throws IOException {
-        String name = "recipes_" + SharedConstants.getGameVersion().getName() + ".txt";
-        //String name = "recipes_" + SharedConstants.getGameVersion().name() + ".txt";
+        //String name = "recipes_" + SharedConstants.getGameVersion().getName() + ".txt";
+        String name = "recipes_" + SharedConstants.getGameVersion().name() + ".txt";
         try (InputStream input = RecipeLoader.class.getClassLoader().getResourceAsStream(name)) {
             if (input == null) {
                 System.err.println("Не удалось найти файл " + name + " в ресурсах");

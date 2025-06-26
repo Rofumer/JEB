@@ -136,7 +136,9 @@ public class RecipeBookResultsMixin {
                         this.resultCollection = animatedResultButton.getResultCollection();
                         recipeBook.unmarkHighlighted(animatedResultButton.getCurrentId());
                         ClientPlayNetworkHandler networkHandler = MinecraftClient.getInstance().getNetworkHandler();
-                        networkHandler.sendPacket(new RecipeBookDataC2SPacket(animatedResultButton.getCurrentId()));
+                        if(!(animatedResultButton.getCurrentId().index() == 9999)) {
+                            networkHandler.sendPacket(new RecipeBookDataC2SPacket(animatedResultButton.getCurrentId()));
+                        }
                     }
                 }
 
