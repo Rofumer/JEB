@@ -122,6 +122,10 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
             }
 
+            if(knownRecipeCount >= 1358 || (craftingStationId != 262 && craftingStationId !=0)) {  //for 1.21.6
+                recipesLoaded = true;
+            }
+
             nonexistingResultItems.clear();
 
             for (Item item : Registries.ITEM) {
