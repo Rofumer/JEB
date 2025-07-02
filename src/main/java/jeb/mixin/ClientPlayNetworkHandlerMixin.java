@@ -9,6 +9,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
+import net.minecraft.network.packet.s2c.play.SynchronizeRecipesS2CPacket;
 import net.minecraft.recipe.RecipeDisplayEntry;
 import net.minecraft.recipe.display.SlotDisplay;
 import net.minecraft.recipe.display.SlotDisplayContexts;
@@ -26,11 +27,13 @@ import java.util.List;
 import java.util.Objects;
 
 import static jeb.client.JEBClient.*;
+import static jeb.client.RecipeIndex.buildRecipeIndex;
+import static jeb.client.RecipeIndex.fillItemIndex;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public abstract class ClientPlayNetworkHandlerMixin {
 
-    @Inject(
+        @Inject(
             method = "onRecipeBookAdd",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/recipebook/ClientRecipeBook;add(Lnet/minecraft/recipe/RecipeDisplayEntry;)V"),
             locals = LocalCapture.CAPTURE_FAILHARD
@@ -115,6 +118,7 @@ public abstract class ClientPlayNetworkHandlerMixin {
                 try {
                     RecipeLoader.loadRecipesFromLog();
                     recipesLoaded = true;
+                    buildRecipeIndex();
 
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -124,6 +128,7 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
             if(knownRecipeCount >= 1358 || (craftingStationId != 262 && craftingStationId !=0)) {  //for 1.21.6
                 recipesLoaded = true;
+                buildRecipeIndex();
             }
 
             nonexistingResultItems.clear();
@@ -133,6 +138,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
                 if (existingResultItems.contains(item)) continue;
                 nonexistingResultItems.add(item);
             }
+
+            fillItemIndex();
 
         }
 

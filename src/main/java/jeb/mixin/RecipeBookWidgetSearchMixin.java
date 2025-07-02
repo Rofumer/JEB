@@ -5,6 +5,7 @@ import jeb.accessor.ClientRecipeBookAccessor;
 import jeb.accessor.RecipeBookWidgetBridge;
 import jeb.client.FavoritesManager;
 import jeb.client.JEBClient;
+import jeb.client.RecipeIndex;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ButtonTextures;
 import net.minecraft.client.gui.screen.Screen;
@@ -17,16 +18,16 @@ import net.minecraft.item.Items;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.recipe.Ingredient;
 import net.minecraft.recipe.NetworkRecipeId;
+import net.minecraft.recipe.RecipeFinder;
 import net.minecraft.recipe.book.RecipeBookCategories;
 import net.minecraft.client.recipebook.RecipeBookType;
 import net.minecraft.recipe.book.RecipeBookCategory;
 import net.minecraft.recipe.book.RecipeBookGroup;
-import net.minecraft.recipe.display.RecipeDisplay;
-import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
-import net.minecraft.recipe.display.SlotDisplayContexts;
+import net.minecraft.recipe.display.*;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.screen.AbstractCraftingScreenHandler;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -39,7 +40,6 @@ import net.minecraft.client.recipebook.ClientRecipeBook;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.recipe.RecipeDisplayEntry;
-import net.minecraft.recipe.display.SlotDisplay;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.screen.AbstractRecipeScreenHandler;
@@ -63,6 +63,8 @@ import static jeb.client.JEBClient.*;
 @Mixin(RecipeBookWidget.class)
 public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreenHandler> implements RecipeBookWidgetBridge {
 
+    @Shadow protected AbstractRecipeScreenHandler craftingScreenHandler;
+
     // Это будет вызов приватного метода
     @Shadow
     private void refresh() {}
@@ -74,6 +76,9 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
     @Shadow @Final
     private ClientRecipeBook recipeBook;
+
+    @Shadow @Final
+    private RecipeFinder recipeFinder;
 
     @Shadow
     private RecipeGroupButtonWidget currentTab;
@@ -153,6 +158,12 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         }
     }
 
+
+    @Inject(method = "populateAllRecipes", at = @At("HEAD"), cancellable = true)
+    private void populateAllRecipes(CallbackInfo ci)
+    {
+        ci.cancel();
+    }
 
     @Inject(method = "mouseClicked", at = @At("TAIL"), cancellable = true)
     private void jeb$clickCustomToggle(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
@@ -607,11 +618,11 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     private void onCustomSearch(boolean resetCurrentPage, boolean filteringCraftable, CallbackInfo ci) {
         String rawInput = searchField.getText();
 
-        if (rawInput != null && rawInput.trim().isEmpty() && emptysearch != null && !emptysearch.isEmpty())
-        {
-            recipesArea.setResults(emptysearch, resetCurrentPage, filteringCraftable);
-            ci.cancel();
-        }
+        //if (rawInput != null && rawInput.trim().isEmpty() && emptysearch != null && !emptysearch.isEmpty())
+        //{
+        //    recipesArea.setResults(emptysearch, resetCurrentPage, filteringCraftable);
+        //    ci.cancel();
+        //}
 
         boolean searchIngredients = rawInput.startsWith("#");
         boolean searchByResult = rawInput.startsWith("~");
@@ -726,7 +737,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
 
         // ===== Обычный поиск =====
-        for (RecipeResultCollection collection : collections) {
+        /*for (RecipeResultCollection collection : collections) {
             if (!collection.hasDisplayableRecipes()) continue;
 
             boolean found = collection.getAllRecipes().stream().anyMatch(entry ->
@@ -738,7 +749,22 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             if (found) {
                 filteredList.add(collection);
             }
+        }*/
+
+        //filteredList = new ArrayList<>(RecipeIndex.fastSearch(query, modName, searchIngredients));
+        filteredList = RecipeIndex.fastSearch(currentTab.getCategory(),query, modName, searchIngredients);
+
+        for (RecipeResultCollection col : filteredList) {
+            if (JEBClient.customToggleEnabled) {
+                col.populateRecipes(recipeFinder, recipe -> true);
+            }
+            else
+            {
+                col.populateRecipes(recipeFinder, this::canDisplay);
+            }
         }
+
+        //System.out.println("JEB:"+filteredList.size());
 
         if (filteringCraftable) {
             filteredList.removeIf(rc -> !rc.hasCraftableRecipes());
@@ -747,7 +773,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         //filteredList.addAll(JEBClient.generateCustomRecipeList(rawInput));
         if(!Objects.equals(string,rawInput))
         {
-            filtered = JEBClient.generateCustomRecipeList(rawInput);
+            filtered = RecipeIndex.generateCustomRecipeList(rawInput);
         }
 
         Screen screen = client.currentScreen;
@@ -768,10 +794,10 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         //    );
         //}
 
-        if (rawInput != null && rawInput.trim().isEmpty() && emptysearch.isEmpty())
-        {
-            emptysearch = filteredList;
-        }
+        ///if (rawInput != null && rawInput.trim().isEmpty() && emptysearch.isEmpty())
+        ///{
+        ///    emptysearch = filteredList;
+        ///}
 
         string=rawInput;
 
@@ -779,6 +805,26 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         ci.cancel();
     }
 
+
+
+    @Unique
+    private boolean canDisplay(RecipeDisplay display) {
+        if (!(this.craftingScreenHandler instanceof AbstractCraftingScreenHandler craftingHandler)) {
+            // Если не является — всегда можно показывать
+            return true;
+        }
+
+        int i = craftingHandler.getWidth();
+        int j = craftingHandler.getHeight();
+
+        if (display instanceof ShapedCraftingRecipeDisplay shaped) {
+            return i >= shaped.width() && j >= shaped.height();
+        } else if (display instanceof ShapelessCraftingRecipeDisplay shapeless) {
+            return i * j >= shapeless.ingredients().size();
+        } else {
+            return false;
+        }
+    }
 
 
 

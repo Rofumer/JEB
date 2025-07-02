@@ -93,7 +93,7 @@ public class RecipeBookResultsMixin {
 
             if (button == 1) {
                 ItemStack stack = animatedResultButton.getDisplayStack();
-                String itemName = stack.getItem().getName().getString(); // Локализованное имя (например, "Булыжник")
+                String itemName = Registries.ITEM.getId(stack.getItem()).toString().toLowerCase(Locale.ROOT); // Локализованное имя (например, "Булыжник")
                 String searchText = "#" + itemName.toLowerCase(Locale.ROOT);
 
 // Устанавливаем в поиск
