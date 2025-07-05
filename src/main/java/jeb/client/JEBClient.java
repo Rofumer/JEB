@@ -39,6 +39,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static net.minecraft.client.resource.language.I18n.translate;
 
 public class JEBClient implements ClientModInitializer {
@@ -51,6 +54,8 @@ public class JEBClient implements ClientModInitializer {
     );
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
+
+    public static final Logger LOGGER = LoggerFactory.getLogger("JEB");
 
 
     private static KeyBinding keyBinding;
