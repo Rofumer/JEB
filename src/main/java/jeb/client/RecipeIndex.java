@@ -34,7 +34,7 @@ import static net.minecraft.client.resource.language.I18n.translate;
 
 public class RecipeIndex {
     // Индексы по категориям
-    public final Map<RecipeBookCategory, Map<String, List<RecipeResultCollection>>> byResult = new HashMap<>();
+    /*public final Map<RecipeBookCategory, Map<String, List<RecipeResultCollection>>> byResult = new HashMap<>();
     public final Map<RecipeBookCategory, Map<String, List<RecipeResultCollection>>> byMod = new HashMap<>();
     public final Map<RecipeBookCategory, Map<String, List<RecipeResultCollection>>> byIngredientWord = new HashMap<>();
     public final Map<RecipeBookCategory, Set<RecipeResultCollection>> allCollections = new HashMap<>();
@@ -135,7 +135,158 @@ public class RecipeIndex {
         long duration = endTime - startTime;
         System.out.println("[JEB] buildRecipeIndex done at " + new java.util.Date(endTime)
                 + " (" + duration + " ms), total indexed recipes: " + totalIndexedRecipes);
+    }*/
+
+    // Индексы по категориям
+    public final Map<RecipeBookCategory, Map<String, List<RecipeResultCollection>>> byResult = new HashMap<>();
+    public final Map<RecipeBookCategory, Map<String, List<RecipeResultCollection>>> byMod = new HashMap<>();
+    public final Map<RecipeBookCategory, Map<String, List<RecipeResultCollection>>> byIngredientWord = new HashMap<>();
+    public final Map<RecipeBookCategory, Map<String, List<RecipeResultCollection>>> byTooltipWord = new HashMap<>();
+    public final Map<RecipeBookCategory, Set<RecipeResultCollection>> allCollections = new HashMap<>();
+    public static final Map<RecipeBookCategory, Map<Item, RecipeResultCollection>> GLOBAL_COLLECTIONS_BY_RESULT = new HashMap<>();
+
+    public static final RecipeIndex GLOBAL_RECIPE_INDEX = new RecipeIndex();
+    public static boolean jebIndexReady = false;
+
+    // === Индексация ===
+    public static void buildRecipeIndex() {
+        long startTime = System.currentTimeMillis();
+        JEBClient.LOGGER.info("[JEB] buildRecipeIndex started at {}", new Date(startTime));
+
+        jebIndexReady = false;
+        MinecraftClient client = MinecraftClient.getInstance();
+        ClientRecipeBook book = client.player.getRecipeBook();
+
+        GLOBAL_RECIPE_INDEX.byResult.clear();
+        GLOBAL_RECIPE_INDEX.byMod.clear();
+        GLOBAL_RECIPE_INDEX.byIngredientWord.clear();
+        GLOBAL_RECIPE_INDEX.byTooltipWord.clear();
+        GLOBAL_RECIPE_INDEX.allCollections.clear();
+        GLOBAL_COLLECTIONS_BY_RESULT.clear();
+
+        ContextParameterMap context = SlotDisplayContexts.createParameters(Objects.requireNonNull(client.world));
+
+        List<RecipeBookCategory> allCategories = new ArrayList<>();
+        for (Field field : RecipeBookCategories.class.getFields()) {
+            if (field.getType() == RecipeBookCategory.class) {
+                try {
+                    RecipeBookCategory category = (RecipeBookCategory) field.get(null);
+                    allCategories.add(category);
+                } catch (Exception ignored) {}
+            }
+        }
+
+        int totalIndexedRecipes = 0;
+
+        for (RecipeBookCategory category : allCategories) {
+            List<RecipeResultCollection> collections = book.getResultsForCategory(category);
+            if (collections.isEmpty()) continue;
+
+            Map<Item, RecipeResultCollection> collectionsByResult = GLOBAL_COLLECTIONS_BY_RESULT.computeIfAbsent(category, k -> new HashMap<>());
+            Set<RecipeResultCollection> categoryCollections = new LinkedHashSet<>();
+
+            Map<String, List<RecipeResultCollection>> resultIndex = new HashMap<>();
+            Map<String, List<RecipeResultCollection>> modIndex = new HashMap<>();
+            Map<String, List<RecipeResultCollection>> ingredientIndex = new HashMap<>();
+            Map<String, List<RecipeResultCollection>> tooltipIndex = new HashMap<>();
+
+            for (RecipeResultCollection collection : collections) {
+                List<RecipeDisplayEntry> entries = collection.getAllRecipes();
+                for (RecipeDisplayEntry recipe : entries) {
+                    totalIndexedRecipes++;
+
+                    ItemStack result = recipe.display().result().getFirst(context);
+                    if (result == null || result.isEmpty()) continue;
+                    Item resultItem = result.getItem();
+
+                    // Коллекция по результату
+                    RecipeResultCollection realCollection = collectionsByResult.get(resultItem);
+                    if (realCollection == null) {
+                        realCollection = new RecipeResultCollection(new ArrayList<>());
+                        collectionsByResult.put(resultItem, realCollection);
+                        categoryCollections.add(realCollection);
+                    }
+                    if (!realCollection.getAllRecipes().contains(recipe)) {
+                        realCollection.getAllRecipes().add(recipe);
+                    }
+
+                    // Индексация по ингредиентам
+                    Optional<List<Ingredient>> opt = recipe.craftingRequirements();
+                    if (opt.isPresent()) {
+                        for (Ingredient ingredient : opt.get()) {
+                            for (ItemStack stack : ingredient.toDisplay().getStacks(context)) {
+                                String ingredientId = Registries.ITEM.getId(stack.getItem()).toString().toLowerCase(Locale.ROOT);
+                                ingredientIndex.computeIfAbsent(ingredientId, k -> new ArrayList<>()).add(realCollection);
+                            }
+                        }
+                    }
+
+                    // Индексация по namespace (моду)
+                    String mod = Registries.ITEM.getId(resultItem).getNamespace().toLowerCase(Locale.ROOT);
+                    for (int i = 0; i < mod.length(); i++) {
+                        for (int j = i + 1; j <= mod.length(); j++) {
+                            String substr = mod.substring(i, j);
+                            if (substr.isEmpty()) continue;
+                            modIndex.computeIfAbsent(substr, k -> new ArrayList<>()).add(realCollection);
+                        }
+                    }
+
+                    // Индекс по подстрокам результата (id и имя)
+                    String resultId = Registries.ITEM.getId(resultItem).toString().toLowerCase(Locale.ROOT);
+                    String name = result.getItemName().getString().toLowerCase(Locale.ROOT).replaceAll("[\\[\\]«»\"]", "");
+                    for (String source : List.of(resultId, name)) {
+                        for (int i = 0; i < source.length(); i++) {
+                            for (int j = i + 1; j <= source.length(); j++) {
+                                String substr = source.substring(i, j);
+                                if (substr.isEmpty()) continue;
+                                resultIndex.computeIfAbsent(substr, k -> new ArrayList<>()).add(realCollection);
+                            }
+                        }
+                    }
+
+                    // --- Индексация по подстрокам тултипов ---
+                    List<String> tooltipLines = new ArrayList<>();
+                    try {
+                        RegistryWrapper.WrapperLookup lookup = client.world.getRegistryManager();
+                        Item.TooltipContext tooltipContext = Item.TooltipContext.create(lookup);
+                        TooltipType tooltipType = TooltipType.Default.BASIC;
+                        List<Text> tooltip = result.getTooltip(tooltipContext, client.player, tooltipType);
+                        for (Text line : tooltip) {
+                            String clean = Formatting.strip(line.getString()).toLowerCase(Locale.ROOT).trim();
+                            tooltipLines.add(clean);
+                        }
+                    } catch (Exception ignored) {}
+
+                    for (String tooltipLine : tooltipLines) {
+                        String[] words = tooltipLine.split("[\\s,;.:!\\-]+");
+                        for (String word : words) {
+                            if (word.length() < 3) continue;
+                            for (int i = 0; i <= word.length() - 3; i++) {
+                                for (int j = i + 3; j <= word.length(); j++) {
+                                    String substr = word.substring(i, j);
+                                    if (substr.isEmpty()) continue;
+                                    tooltipIndex.computeIfAbsent(substr, k -> new ArrayList<>()).add(realCollection);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            GLOBAL_RECIPE_INDEX.allCollections.put(category, categoryCollections);
+            GLOBAL_RECIPE_INDEX.byResult.put(category, resultIndex);
+            GLOBAL_RECIPE_INDEX.byMod.put(category, modIndex);
+            GLOBAL_RECIPE_INDEX.byIngredientWord.put(category, ingredientIndex);
+            GLOBAL_RECIPE_INDEX.byTooltipWord.put(category, tooltipIndex);
+        }
+
+        jebIndexReady = true;
+
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+        JEBClient.LOGGER.info("[JEB] buildRecipeIndex done at {} ({} ms), total indexed recipes: {}", new Date(endTime), duration, totalIndexedRecipes);
     }
+
 
     // === Универсальный быстрый поиск по списку категорий ===
     public static List<RecipeResultCollection> fastSearch(
@@ -333,6 +484,181 @@ public class RecipeIndex {
         }
     }
 
+    /**
+     * Проверяет наличие рецепта с тем же id в индексе для категории.
+     * Сравнивает по RecipeDisplayEntry.getId() — не по объекту!
+     */
+    public static boolean recipeIdExistsInIndex(RecipeBookCategory category, RecipeDisplayEntry recipeEntry) {
+        Map<String, List<RecipeResultCollection>> resultIndex = GLOBAL_RECIPE_INDEX.byResult.get(category);
+        if (resultIndex == null) return false;
+        ContextParameterMap context = SlotDisplayContexts.createParameters(Objects.requireNonNull(MinecraftClient.getInstance().world));
+        ItemStack result = recipeEntry.display().result().getFirst(context);
+        if (result == null || result.isEmpty()) return false;
+        String resultId = Registries.ITEM.getId(result.getItem()).toString().toLowerCase(Locale.ROOT);
+        List<RecipeResultCollection> collections = resultIndex.get(resultId);
+        if (collections == null) return false;
+
+        String incomingId = recipeEntry.id().toString(); // или .asString() — смотри по типу
+
+        for (RecipeResultCollection collection : collections) {
+            for (RecipeDisplayEntry r : collection.getAllRecipes()) {
+                if (r.id().toString().equals(incomingId)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static void updateIndexesWithRecipe(
+            RecipeBookCategory category,
+            RecipeResultCollection collection,
+            RecipeDisplayEntry recipeEntry
+    ) {
+        GLOBAL_RECIPE_INDEX.allCollections.computeIfAbsent(category, k -> new LinkedHashSet<>()).add(collection);
+
+        ContextParameterMap context = SlotDisplayContexts.createParameters(Objects.requireNonNull(MinecraftClient.getInstance().world));
+        ItemStack result = recipeEntry.display().result().getFirst(context);
+        if (result == null || result.isEmpty()) return;
+        Item resultItem = result.getItem();
+
+        // Индексация по модам
+        String mod = Registries.ITEM.getId(resultItem).getNamespace().toLowerCase(Locale.ROOT);
+        Map<String, List<RecipeResultCollection>> modIndex =
+                GLOBAL_RECIPE_INDEX.byMod.computeIfAbsent(category, k -> new HashMap<>());
+        for (int i = 0; i < mod.length(); i++) {
+            for (int j = i + 1; j <= mod.length(); j++) {
+                String substr = mod.substring(i, j);
+                if (substr.isEmpty()) continue;
+                List<RecipeResultCollection> list = modIndex.computeIfAbsent(substr, k -> new ArrayList<>());
+                if (!list.contains(collection)) {
+                    list.add(collection);
+                }
+            }
+        }
+
+        // Индексация по результату
+        String resultId = Registries.ITEM.getId(resultItem).toString().toLowerCase(Locale.ROOT);
+        String name = result.getItemName().getString().toLowerCase(Locale.ROOT).replaceAll("[\\[\\]«»\"]", "");
+        Map<String, List<RecipeResultCollection>> resultIndex =
+                GLOBAL_RECIPE_INDEX.byResult.computeIfAbsent(category, k -> new HashMap<>());
+        for (String source : List.of(resultId, name)) {
+            for (int i = 0; i < source.length(); i++) {
+                for (int j = i + 1; j <= source.length(); j++) {
+                    String substr = source.substring(i, j);
+                    if (substr.isEmpty()) continue;
+                    List<RecipeResultCollection> list = resultIndex.computeIfAbsent(substr, k -> new ArrayList<>());
+                    if (!list.contains(collection)) {
+                        list.add(collection);
+                    }
+                }
+            }
+        }
+
+        // Индексация по ингредиентам
+        Map<String, List<RecipeResultCollection>> ingredientIndex =
+                GLOBAL_RECIPE_INDEX.byIngredientWord.computeIfAbsent(category, k -> new HashMap<>());
+        Optional<List<Ingredient>> opt = recipeEntry.craftingRequirements();
+        if (opt.isPresent()) {
+            for (Ingredient ingredient : opt.get()) {
+                for (ItemStack stack : ingredient.toDisplay().getStacks(context)) {
+                    String ingredientId = Registries.ITEM.getId(stack.getItem()).toString().toLowerCase(Locale.ROOT);
+                    List<RecipeResultCollection> list = ingredientIndex.computeIfAbsent(ingredientId, k -> new ArrayList<>());
+                    if (!list.contains(collection)) {
+                        list.add(collection);
+                    }
+                }
+            }
+        }
+
+        // Индексация по тултипам (подстроки длиной >=3)
+        Map<String, List<RecipeResultCollection>> tooltipIndex =
+                GLOBAL_RECIPE_INDEX.byTooltipWord.computeIfAbsent(category, k -> new HashMap<>());
+
+        MinecraftClient client = MinecraftClient.getInstance();
+        List<String> tooltipLines = new ArrayList<>();
+        try {
+            RegistryWrapper.WrapperLookup lookup = client.world.getRegistryManager();
+            Item.TooltipContext tooltipContext = Item.TooltipContext.create(lookup);
+            TooltipType tooltipType = TooltipType.Default.BASIC;
+            List<Text> tooltip = result.getTooltip(tooltipContext, client.player, tooltipType);
+            for (Text line : tooltip) {
+                String clean = Formatting.strip(line.getString()).toLowerCase(Locale.ROOT).trim();
+                tooltipLines.add(clean);
+            }
+        } catch (Exception ignored) {}
+
+        for (String tooltipLine : tooltipLines) {
+            String[] words = tooltipLine.split("[\\s,;.:!\\-]+");
+            for (String word : words) {
+                if (word.length() < 3) continue;
+                for (int i = 0; i <= word.length() - 3; i++) {
+                    for (int j = i + 3; j <= word.length(); j++) {
+                        String substr = word.substring(i, j);
+                        if (substr.isEmpty()) continue;
+                        List<RecipeResultCollection> list = tooltipIndex.computeIfAbsent(substr, k -> new ArrayList<>());
+                        if (!list.contains(collection)) {
+                            list.add(collection);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public static void addRecipeToCollectionIfAbsent(
+            RecipeBookCategory category,
+            RecipeDisplayEntry recipeEntry,
+            ContextParameterMap context
+    ) {
+        Map<Item, RecipeResultCollection> byItem = GLOBAL_COLLECTIONS_BY_RESULT.computeIfAbsent(category, k -> new HashMap<>());
+        ItemStack result = recipeEntry.display().result().getFirst(context);
+        if (result == null || result.isEmpty()) return;
+        Item resultItem = result.getItem();
+
+        RecipeResultCollection collection = byItem.get(resultItem);
+        if (collection == null) {
+            collection = new RecipeResultCollection(new ArrayList<>());
+            byItem.put(resultItem, collection);
+            RecipeIndex.GLOBAL_RECIPE_INDEX.allCollections.computeIfAbsent(category, k -> new LinkedHashSet<>()).add(collection);
+        }
+        List<RecipeDisplayEntry> recipes = collection.getAllRecipes();
+
+        if (recipes.contains(recipeEntry)) {
+            return; // Уже был такой рецепт!
+        }
+        try {
+            recipes.add(recipeEntry);
+        } catch (UnsupportedOperationException e) {
+            List<RecipeDisplayEntry> fixed = new ArrayList<>(recipes);
+            fixed.add(recipeEntry);
+            RecipeResultCollection newCollection = new RecipeResultCollection(fixed);
+            byItem.put(resultItem, newCollection);
+            Set<RecipeResultCollection> set = RecipeIndex.GLOBAL_RECIPE_INDEX.allCollections.computeIfAbsent(category, k -> new LinkedHashSet<>());
+            set.remove(collection);
+            set.add(newCollection);
+        }
+    }
+
+    public static void addAndIndexRecipeIfAbsent(
+            RecipeBookCategory category,
+            RecipeDisplayEntry recipeEntry,
+            ContextParameterMap context
+    ) {
+        // Добавляем в коллекцию, если нет
+        addRecipeToCollectionIfAbsent(category, recipeEntry, context);
+
+        // Получаем коллекцию (она гарантированно есть!)
+        Map<Item, RecipeResultCollection> byItem = GLOBAL_COLLECTIONS_BY_RESULT.computeIfAbsent(category, k -> new HashMap<>());
+        ItemStack result = recipeEntry.display().result().getFirst(context);
+        if (result == null || result.isEmpty()) return;
+        Item resultItem = result.getItem();
+        RecipeResultCollection collection = byItem.get(resultItem);
+        if (collection == null) return; // Уже не может быть, но на всякий случай
+
+        // Индексируем (можно оптимизировать чтобы не индексировать дважды, но это уже детали)
+        updateIndexesWithRecipe(category, collection, recipeEntry);
+    }
 
 
 

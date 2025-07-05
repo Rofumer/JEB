@@ -752,7 +752,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         }*/
 
         //filteredList = new ArrayList<>(RecipeIndex.fastSearch(query, modName, searchIngredients));
-        filteredList = RecipeIndex.fastSearch(currentTab.getCategory(),query, modName, searchIngredients);
+        filteredList = new ArrayList<>(RecipeIndex.fastSearch(currentTab.getCategory(),query, modName, searchIngredients));
 
         for (RecipeResultCollection col : filteredList) {
             if (JEBClient.customToggleEnabled) {
