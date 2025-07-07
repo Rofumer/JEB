@@ -307,6 +307,8 @@ public class RecipeIndex {
             Map<String, List<RecipeResultCollection>> ingredientIndex = GLOBAL_RECIPE_INDEX.byIngredientWord.getOrDefault(category, Map.of());
             Set<RecipeResultCollection> all = GLOBAL_RECIPE_INDEX.allCollections.getOrDefault(category, Set.of());
             Map<String, List<RecipeResultCollection>> resultIndex = GLOBAL_RECIPE_INDEX.byResult.getOrDefault(category, Map.of());
+            // <<< ДОБАВЬ ЭТУ СТРОКУ ДЛЯ ТУЛТИПОВ >>>
+            Map<String, List<RecipeResultCollection>> tooltipIndex = GLOBAL_RECIPE_INDEX.byTooltipWord.getOrDefault(category, Map.of());
 
             // Если нет фильтра по модулю и пустой запрос — вернуть все коллекции!
             if ((modName.isEmpty()) && query.isEmpty()) {
@@ -343,11 +345,16 @@ public class RecipeIndex {
             if (!query.isEmpty() && !searchIngredients) {
                 List<RecipeResultCollection> byResult = resultIndex.getOrDefault(query, List.of());
                 result.addAll(byResult);
+
+                // <<< ДОБАВЬ ПОИСК ПО ТУЛТИПАМ >>>
+                List<RecipeResultCollection> byTooltip = tooltipIndex.getOrDefault(query, List.of());
+                result.addAll(byTooltip);
             }
         }
 
         return new ArrayList<>(result);
     }
+
 
     // Универсальная обёртка: принимает или одиночную категорию, или Type с его списком категорий
     public static List<RecipeResultCollection> fastSearch(
