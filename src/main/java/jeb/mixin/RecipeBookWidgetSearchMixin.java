@@ -655,9 +655,9 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
             // Проходим по всем коллекциям рецептов из выбранной вкладки
             for (RecipeResultCollection collection : recipeBook.getResultsForCategory(currentTab.getCategory())) {
-                for (RecipeDisplayEntry recipe : collection.getAllRecipes()) {
+                for (RecipeDisplayEntry recipe1 : collection.getAllRecipes()) {
                     // Новый способ получения результата рецепта в 1.21.5:
-                    SlotDisplay resultSlot = recipe.display().result();
+                    SlotDisplay resultSlot = recipe1.display().result();
 
 
                     List<ItemStack> stacks = resultSlot.getStacks(context);
@@ -666,7 +666,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
                     String resultName = Registries.ITEM.getId(result.getItem()).getPath().toLowerCase(Locale.ROOT);
 
                     if (resultName.equals(query)) {
-                        for (Ingredient ingredient : recipe.craftingRequirements().get()) {
+                        for (Ingredient ingredient : recipe1.craftingRequirements().get()) {
                             // getItems() — возвращает ItemStack[]
                             for (ItemStack stack : ingredient.toDisplay().getStacks(context)) {
                                 if (!stack.isEmpty()) {
@@ -683,6 +683,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
                                             //ItemStack subResult = subRecipe.getResultItem(client.world != null ? client.world.registryAccess() : null);
                                             if (!subResult.isEmpty() && ItemStack.areItemsEqual(subResult, stack)) {
+                                                subCollection.populateRecipes(recipeFinder, recipe -> true);
                                                 ingredientsList.add(subCollection);
                                                 foundReal = true;
                                                 break;
@@ -693,7 +694,9 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
                                     // Если не нашли реального рецепта — добавляем фейковую коллекцию
                                     if (!foundReal) {
                                         RecipeDisplayEntry fakeRecipe = createDummySingleItemRecipe(stack);
-                                        ingredientsList.add(new RecipeResultCollection(List.of(fakeRecipe)));
+                                        RecipeResultCollection fakeCollection = new RecipeResultCollection(List.of(fakeRecipe));
+                                        fakeCollection.populateRecipes(recipeFinder, recipe -> true);
+                                        ingredientsList.add(fakeCollection);
                                     }
                                     break; // только один stack из одного ingredient
                                 }
@@ -723,6 +726,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
                         .anyMatch(favoriteItems::contains);
 
                 if (hasFavorite) {
+                    collection.populateRecipes(recipeFinder, recipe -> true);
                     filteredList.add(collection);
                 }
             }
