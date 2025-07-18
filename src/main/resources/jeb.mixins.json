@@ -13,11 +13,13 @@
   "client": [
     "AbstractCraftingRecipeBookWidgetMixin",
     "AnimatedResultButtonMixin",
+    "ClickableWidgetAccessor",
     "ClientPlayNetworkHandlerMixin",
     "RecipeAlternativesWidgetMixin",
     "RecipeBookResultsAccessor",
     "RecipeBookWidgetAccessor",
     "RecipeBookWidgetSearchMixin",
+    "RecipeGroupButtonWidgetMixin",
     "RecipeResultCollectionMixin"
   ],
   "injectors": {

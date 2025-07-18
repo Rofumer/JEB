@@ -40,7 +40,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
             "1.21.4", 1358,
             "1.21.5", 1361,
             "1.21.6", 1395,
-            "1.21.7", 1395
+            "1.21.7", 1395,
+            "1.21.8", 1395
     );
 
     @Unique
@@ -48,7 +49,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
             "1.21.4", 259,
             "1.21.5", 259,
             "1.21.6", 262,
-            "1.21.7", 262
+            "1.21.7", 262,
+            "1.21.8", 262
     );
 
 
@@ -105,6 +107,7 @@ public abstract class ClientPlayNetworkHandlerMixin {
             if(recipesLoaded) return;
 
             String version = SharedConstants.getGameVersion().name(); // примерная функция
+            //String version = SharedConstants.getGameVersion().getName(); // примерная функция
 
             int vanillaMaxRecipes = VANILLA_RECIPE_COUNTS.getOrDefault(version, 1358);
             int vanillaCTID = VANILLA_CT_ID.getOrDefault(version, 259);
