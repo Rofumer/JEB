@@ -42,7 +42,7 @@ public abstract class RecipeBookWidgetMixin {
             target = "Lnet/minecraft/client/network/ClientPlayerInteractionManager;clickRecipe(ILnet/minecraft/recipe/NetworkRecipeId;Z)V",
             shift = At.Shift.AFTER
     ))
-    private void onRecipeClicked(RecipeResultCollection results, NetworkRecipeId recipeId, CallbackInfoReturnable<Boolean> cir) {
+    private void onRecipeClicked(RecipeResultCollection results, NetworkRecipeId recipeId, boolean bl, CallbackInfoReturnable<Boolean> cir) {
         MinecraftClient client = MinecraftClient.getInstance();
         ClientRecipeBook recipeBook = client.player.getRecipeBook();
 

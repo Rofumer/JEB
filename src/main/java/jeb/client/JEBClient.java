@@ -196,6 +196,13 @@ public class JEBClient implements ClientModInitializer {
         }
     }
 
+    // id категории
+    public static final Identifier JEB_CATEGORY_ID = Identifier.of("jeb", "key_category");
+
+    // сама категория
+    private static final KeyBinding.Category JEB_CATEGORY =
+            KeyBinding.Category.create(JEB_CATEGORY_ID);
+
     @Override
     public void onInitializeClient() {
 
@@ -206,14 +213,14 @@ public class JEBClient implements ClientModInitializer {
                 "key.jeb.optional_recipes_loading_screen", // The translation key of the keybinding's name
                 InputUtil.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
                 GLFW.GLFW_KEY_APOSTROPHE, // The keycode of the key
-                "JEB (Just Enough Book)" // The translation key of the keybinding's category.
+                JEB_CATEGORY // The translation key of the keybinding's category.
         ));
 
         keyBinding2 = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.jeb.add_remove_favorite_recipes", // The translation key of the keybinding's name
                 InputUtil.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
                 GLFW.GLFW_KEY_A, // The keycode of the key
-                "JEB (Just Enough Book)" // The translation key of the keybinding's category.
+                JEB_CATEGORY // The translation key of the keybinding's category.
         ));
 
 

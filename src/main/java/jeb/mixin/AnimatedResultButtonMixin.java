@@ -25,6 +25,25 @@ import java.util.List;
 public class AnimatedResultButtonMixin implements AnimatedResultButtonExtension {
 
 
+    private static void drawBorderCompat(DrawContext ctx, int x, int y, int w, int h, int color) {
+        try {
+            DrawContext.class.getMethod("drawBorder", int.class,int.class,int.class,int.class,int.class)
+                    .invoke(ctx, x,y,w,h,color);
+        } catch (ReflectiveOperationException e1) {
+            try {
+                DrawContext.class.getMethod("renderOutline", int.class,int.class,int.class,int.class,int.class)
+                        .invoke(ctx, x,y,w,h,color);
+            } catch (ReflectiveOperationException e2) {
+                // Фоллбэк через fill — 1px рамка
+                ctx.fill(x, y, x + w, y + 1, color);
+                ctx.fill(x, y + h - 1, x + w, y + h, color);
+                ctx.fill(x, y, x + 1, y + h, color);
+                ctx.fill(x + w - 1, y, x + w, y + h, color);
+            }
+        }
+    }
+
+
     @Unique
     private long jeb$flashUntil = 0L; // время до которого будет подсветка
 
@@ -42,7 +61,7 @@ public class AnimatedResultButtonMixin implements AnimatedResultButtonExtension 
     private void jeb$renderFlash(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (jeb$isFlashing()) {
             AnimatedResultButton self = (AnimatedResultButton) (Object) this;
-            context.drawBorder(self.getX(), self.getY(), self.getWidth(), self.getHeight(), 0xFFFFFF00); // Жёлтая рамка
+            drawBorderCompat(context,self.getX(), self.getY(), self.getWidth(), self.getHeight(), 0xFFFFFF00); // Жёлтая рамка
         }
     }
 

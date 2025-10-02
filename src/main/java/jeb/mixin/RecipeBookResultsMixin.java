@@ -3,6 +3,7 @@ package jeb.mixin;
 import com.llamalad7.mixinextras.sugar.Local;
 import jeb.accessor.ClientRecipeBookAccessor;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.screen.recipebook.*;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.recipebook.ClientRecipeBook;
@@ -53,17 +54,13 @@ public class RecipeBookResultsMixin {
             method = "mouseClicked",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/screen/recipebook/AnimatedResultButton;mouseClicked(DDI)Z",
+                    target = "Lnet/minecraft/client/gui/screen/recipebook/AnimatedResultButton;mouseClicked(Lnet/minecraft/client/gui/Click;Z)Z",
                     shift = At.Shift.AFTER
             ),
             cancellable = true
     )
     private void onRightClickInject(
-            double mouseX, double mouseY, int button,
-            int areaLeft, int areaTop, int areaWidth, int areaHeight,
-            CallbackInfoReturnable<Boolean> cir,
-            @Local ContextParameterMap contextParameterMap,
-            @Local AnimatedResultButton animatedResultButton
+            Click click, int left, int top, int width, int height, boolean bl, CallbackInfoReturnable<Boolean> cir, @Local ContextParameterMap contextParameterMap, @Local AnimatedResultButton animatedResultButton
     ) {
 
         //if (!(MinecraftClient.getInstance().player.currentScreenHandler instanceof AbstractCraftingScreenHandler)) {
@@ -76,7 +73,7 @@ public class RecipeBookResultsMixin {
         //if (animatedResultButton.mouseClicked(mouseX, mouseY, button)) {
 
 
-            if (button == 2) {
+            if (click.button() == 2) {
                 ItemStack stack = animatedResultButton.getDisplayStack();
                 //String itemName = stack.getItem().asItem().toString();
                 String itemName = Registries.ITEM.getId(stack.getItem()).getPath().toLowerCase(Locale.ROOT);
@@ -91,7 +88,7 @@ public class RecipeBookResultsMixin {
                 cir.cancel();
             }
 
-            if (button == 1) {
+            if (click.button() == 1) {
                 ItemStack stack = animatedResultButton.getDisplayStack();
                 String itemName = Registries.ITEM.getId(stack.getItem()).toString().toLowerCase(Locale.ROOT); // Локализованное имя (например, "Булыжник")
                 String searchText = "#" + itemName.toLowerCase(Locale.ROOT);
@@ -106,7 +103,7 @@ public class RecipeBookResultsMixin {
             }
 
 
-            if (button == 0) {
+            if (click.button() == 0) {
 
 
                 if (!(MinecraftClient.getInstance().player.currentScreenHandler instanceof AbstractCraftingScreenHandler)) {
@@ -128,7 +125,7 @@ public class RecipeBookResultsMixin {
                     RecipeResultCollection myCustomRecipeResultCollection = new RecipeResultCollection(List.of(entry));
 
                     if(!canDisplay(entry.display())) {
-                        alternatesWidget.showAlternativesForResult(myCustomRecipeResultCollection, contextParameterMap, false, animatedResultButton.getX(), animatedResultButton.getY(), areaLeft + areaWidth / 2, areaTop + 13 + areaHeight / 2, (float) animatedResultButton.getWidth());
+                        alternatesWidget.showAlternativesForResult(myCustomRecipeResultCollection, contextParameterMap, false, animatedResultButton.getX(), animatedResultButton.getY(), left + width / 2, top + 13 + height / 2, (float) animatedResultButton.getWidth());
                     }
                     else
                     {

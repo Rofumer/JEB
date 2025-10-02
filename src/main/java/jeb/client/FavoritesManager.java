@@ -154,8 +154,8 @@ public class FavoritesManager {
         NbtCompound result = new NbtCompound();
 
         var blockEntityData = stack.get(net.minecraft.component.DataComponentTypes.BLOCK_ENTITY_DATA);
-        if (blockEntityData != null && !blockEntityData.copyNbt().isEmpty()) {
-            result.copyFrom(blockEntityData.copyNbt());
+        if (blockEntityData != null && !blockEntityData.copyNbtWithoutId().isEmpty()) {
+            result.copyFrom(blockEntityData.copyNbtWithoutId());
         }
 
         var customData = stack.get(net.minecraft.component.DataComponentTypes.CUSTOM_NAME);
@@ -169,8 +169,8 @@ public class FavoritesManager {
         }
 
         var entityData = stack.get(net.minecraft.component.DataComponentTypes.ENTITY_DATA);
-        if (entityData != null && !entityData.copyNbt().isEmpty()) {
-            result.copyFrom(entityData.copyNbt());
+        if (entityData != null && !entityData.copyNbtWithoutId().isEmpty()) {
+            result.copyFrom(entityData.copyNbtWithoutId());
         }
 
         //return result.isEmpty() ? "" : result.toString();

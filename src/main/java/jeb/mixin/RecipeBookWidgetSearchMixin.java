@@ -6,6 +6,7 @@ import jeb.accessor.RecipeBookWidgetBridge;
 import jeb.client.FavoritesManager;
 import jeb.client.JEBClient;
 import jeb.client.RecipeIndex;
+import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ButtonTextures;
 import net.minecraft.client.gui.screen.Screen;
@@ -14,6 +15,7 @@ import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.screen.recipebook.*;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ToggleButtonWidget;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.item.Items;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.recipe.Ingredient;
@@ -166,8 +168,8 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     }
 
     @Inject(method = "mouseClicked", at = @At("TAIL"), cancellable = true)
-    private void jeb$clickCustomToggle(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
-        if (jeb$customToggleButton != null && jeb$customToggleButton.mouseClicked(mouseX, mouseY, button)) {
+    private void jeb$clickCustomToggle(Click click, boolean doubled, CallbackInfoReturnable<Boolean> cir) {
+        if (jeb$customToggleButton != null && jeb$customToggleButton.mouseClicked(click, doubled)) {
             jeb$customToggleState = !jeb$customToggleState;
             jeb$customToggleButton.setToggled(jeb$customToggleState);
             JEBClient.customToggleEnabled = !JEBClient.customToggleEnabled;
@@ -279,10 +281,10 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
 
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
-    private void onKeyPressed(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
+    private void onKeyPressed(KeyInput input, CallbackInfoReturnable<Boolean> cir) {
         // Проверка на нужную клавишу (например, клавиша G, keyCode = 71)
         //if (keyCode == GLFW.GLFW_KEY_A) {
-        if (JEBClient.keyBinding2.matchesKey(keyCode, scanCode)) {
+        if (JEBClient.keyBinding2.matchesKey(input)) {
             AnimatedResultButton hovered = ((RecipeBookResultsAccessor) recipesArea).getHoveredResultButton();
             if (hovered != null) {
                 //System.out.println("Над кнопкой: " + hovered.getDisplayStack().getItem().toString());
@@ -309,25 +311,36 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         }
     }
 
-    @Inject(method = "select", at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/network/ClientPlayerInteractionManager;clickRecipe(ILnet/minecraft/recipe/NetworkRecipeId;Z)V",
-            shift = At.Shift.AFTER
-    ))
-    private void onRecipeClicked(RecipeResultCollection results, NetworkRecipeId recipeId, CallbackInfoReturnable<Boolean> cir) {
+    @Inject(
+            method = "select",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/network/ClientPlayerInteractionManager;clickRecipe(ILnet/minecraft/recipe/NetworkRecipeId;Z)V",
+                    shift = At.Shift.AFTER
+            ),
+            cancellable = false,
+            require = 0 // не крашиться, если цель не найдена в других маппингах/версиях
+    )
+    private void onRecipeClicked(
+            RecipeResultCollection results,
+            NetworkRecipeId recipeId,
+            boolean craftAll,
+            CallbackInfoReturnable<Boolean> cir
+    ) {
         MinecraftClient client = MinecraftClient.getInstance();
-        ClientRecipeBook recipeBook = client.player.getRecipeBook();
+        if (client.player == null) return;
 
-        Map<NetworkRecipeId, RecipeDisplayEntry> recipes = ((ClientRecipeBookAccessor) recipeBook).getRecipes();
+        ClientRecipeBook recipeBook = client.player.getRecipeBook();
+        Map<NetworkRecipeId, RecipeDisplayEntry> recipes =
+                ((ClientRecipeBookAccessor) recipeBook).getRecipes();
 
         RecipeDisplayEntry entry = recipes.get(recipeId);
-
         Screen screen = client.currentScreen;
 
         if (screen instanceof RecipeBookProvider provider && entry != null) {
-            //System.out.println("РецептL " + entry.display().toString());
-            if(!results.isCraftable(recipeId) && recipeId.index()!=9999) {
-                provider.onCraftFailed(entry.display());
+            // если рецепт НЕ крафтится сейчас (нет материалов) и это не твоя «служебная» метка
+            if (!results.isCraftable(recipeId) && recipeId.index() != 9999) {
+                provider.onCraftFailed(entry.display()); // твой хук
             }
         }
     }

@@ -41,7 +41,7 @@ public abstract class ServerRecipeBookMixin {
         List<RecipeBookAddS2CPacket.Entry> allEntries = new ArrayList<>();
 
         // Получаем все рецепты через RecipeManager
-        Collection<RecipeEntry<?>> allRecipes = player.getServer().getRecipeManager().values();
+        Collection<RecipeEntry<?>> allRecipes = player.getEntityWorld().getServer().getRecipeManager().values();
 
         for (RecipeEntry<?> recipeEntry : allRecipes) {
             RegistryKey<Recipe<?>> recipeKey = recipeEntry.id(); // ключ рецепта

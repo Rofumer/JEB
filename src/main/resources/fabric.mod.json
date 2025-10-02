@@ -6,9 +6,8 @@
   "name": "Just Enough Book",
   "description": "Improves your vanilla recipes book",
   "authors": ["Max Bel"],
-  "website": "https://www.curseforge.com/minecraft/mc-mods/jeb-just-enough-book",
-  "discord": "https://discord.gg/TR8tUk4WNF",
   "contact": {
+    "website": "https://www.curseforge.com/minecraft/mc-mods/jeb-just-enough-book",
     "homepage": "https://www.curseforge.com/minecraft/mc-mods/jeb-just-enough-book",
     "email": "rofumer@gmail.com",
     "discord": "https://discord.gg/TR8tUk4WNF",
@@ -42,7 +41,7 @@
     "fabricloader": ">=${loader_version}",
     "fabric": "*",
     "minecraft": [
-      "1.21.8"
+      "1.21.9"
     ]
   }
 }
