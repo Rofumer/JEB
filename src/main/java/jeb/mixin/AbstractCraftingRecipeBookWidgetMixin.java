@@ -1,7 +1,7 @@
 package jeb.mixin;
 
 import jeb.client.JEBClient;
-import net.minecraft.client.gui.screen.recipebook.AbstractCraftingRecipeBookWidget;
+import net.minecraft.client.gui.screen.recipebook.CraftingRecipeBookWidget;
 import net.minecraft.client.gui.screen.recipebook.RecipeBookWidget;
 import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
 import net.minecraft.item.Items;
@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.ArrayList;
 import java.util.List;
 
-@Mixin(AbstractCraftingRecipeBookWidget.class)
+@Mixin(CraftingRecipeBookWidget.class)
 public class AbstractCraftingRecipeBookWidgetMixin {
 
     @Inject(method = "populateRecipes", at = @At("HEAD"), cancellable = true)
