@@ -312,10 +312,10 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
     // ===== основной перехват refreshResults (кастомный поиск) =====
 
-    @Unique
-    private String string = "";
-    @Unique
-    private List<RecipeResultCollection> filtered = new ArrayList<>();
+    //@Unique
+    //private String string = "";
+    //@Unique
+    //private List<RecipeResultCollection> filtered = new ArrayList<>();
 
     @Inject(method = "refreshResults", at = @At("HEAD"), cancellable = true)
     private void onCustomSearch(boolean resetCurrentPage, boolean filteringCraftable, CallbackInfo ci) {
