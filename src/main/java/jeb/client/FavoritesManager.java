@@ -1,22 +1,19 @@
 package jeb.client;
 
 import com.google.gson.*;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
-
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStack;
 
 public class FavoritesManager {
-    private static final Path FAVORITES_PATH = Paths.get(MinecraftClient.getInstance().runDirectory.getAbsolutePath(), "config", "JEBfavorites.json");
+    private static final Path FAVORITES_PATH = Paths.get(Minecraft.getInstance().gameDirectory.getAbsolutePath(), "config", "JEBfavorites.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static Set<Identifier> loadFavoriteItemIds() {
@@ -30,7 +27,7 @@ public class FavoritesManager {
             for (JsonElement el : array) {
                 JsonObject obj = el.getAsJsonObject();
                 if (server.equals(obj.get("server").getAsString())) {
-                    result.add(Identifier.of(obj.get("item").getAsString()));
+                    result.add(Identifier.parse(obj.get("item").getAsString()));
                 }
             }
 
@@ -44,7 +41,7 @@ public class FavoritesManager {
     public static void removeFavorite(ItemStack stack) {
         try {
             String server = getServerName();
-            Identifier itemId = Registries.ITEM.getId(stack.getItem());
+            Identifier itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
             String nbtString = getSerializedNbt(stack);
 
             if (!Files.exists(FAVORITES_PATH)) return;
@@ -80,7 +77,7 @@ public class FavoritesManager {
     public static void saveFavorite(ItemStack stack) {
         try {
             String server = getServerName();
-            Identifier itemId = Registries.ITEM.getId(stack.getItem());
+            Identifier itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
             String nbtString = getSerializedNbt(stack);
 
             JsonArray favorites = Files.exists(FAVORITES_PATH)
@@ -139,11 +136,11 @@ public class FavoritesManager {
     }
 
     private static String getServerName() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.getCurrentServerEntry() != null) {
-            return client.getCurrentServerEntry().address;
-        } else if (client.getServer() != null) {
-            return client.getServer().getSaveProperties().getLevelName();
+        Minecraft client = Minecraft.getInstance();
+        if (client.getCurrentServer() != null) {
+            return client.getCurrentServer().ip;
+        } else if (client.getSingleplayerServer() != null) {
+            return client.getSingleplayerServer().getWorldData().getLevelName();
         } else {
             return "unknown_local_world";
         }
@@ -151,26 +148,26 @@ public class FavoritesManager {
 
 
     private static String getSerializedNbt(ItemStack stack) {
-        NbtCompound result = new NbtCompound();
+        CompoundTag result = new CompoundTag();
 
-        var blockEntityData = stack.get(net.minecraft.component.DataComponentTypes.BLOCK_ENTITY_DATA);
-        if (blockEntityData != null && !blockEntityData.copyNbtWithoutId().isEmpty()) {
-            result.copyFrom(blockEntityData.copyNbtWithoutId());
+        var blockEntityData = stack.get(net.minecraft.core.component.DataComponents.BLOCK_ENTITY_DATA);
+        if (blockEntityData != null && !blockEntityData.copyTagWithoutId().isEmpty()) {
+            result.merge(blockEntityData.copyTagWithoutId());
         }
 
-        var customData = stack.get(net.minecraft.component.DataComponentTypes.CUSTOM_NAME);
+        var customData = stack.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME);
         if (customData != null && !customData.getString().isEmpty()) {
             return customData.getString();
         }
 
-        var bucketEntityData = stack.get(net.minecraft.component.DataComponentTypes.BUCKET_ENTITY_DATA);
-        if (bucketEntityData != null && !bucketEntityData.copyNbt().isEmpty()) {
-            result.copyFrom(bucketEntityData.copyNbt());
+        var bucketEntityData = stack.get(net.minecraft.core.component.DataComponents.BUCKET_ENTITY_DATA);
+        if (bucketEntityData != null && !bucketEntityData.copyTag().isEmpty()) {
+            result.merge(bucketEntityData.copyTag());
         }
 
-        var entityData = stack.get(net.minecraft.component.DataComponentTypes.ENTITY_DATA);
-        if (entityData != null && !entityData.copyNbtWithoutId().isEmpty()) {
-            result.copyFrom(entityData.copyNbtWithoutId());
+        var entityData = stack.get(net.minecraft.core.component.DataComponents.ENTITY_DATA);
+        if (entityData != null && !entityData.copyTagWithoutId().isEmpty()) {
+            result.merge(entityData.copyTagWithoutId());
         }
 
         //return result.isEmpty() ? "" : result.toString();

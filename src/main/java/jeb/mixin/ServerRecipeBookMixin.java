@@ -1,15 +1,5 @@
 package jeb.mixin;
 
-import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
-import net.minecraft.network.packet.s2c.play.RecipeBookSettingsS2CPacket;
-import net.minecraft.recipe.Recipe;
-import net.minecraft.recipe.RecipeEntry;
-import net.minecraft.recipe.book.RecipeBook;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.network.ServerRecipeBook;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -20,44 +10,53 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket;
+import net.minecraft.network.protocol.game.ClientboundRecipeBookSettingsPacket;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.stats.RecipeBook;
+import net.minecraft.stats.ServerRecipeBook;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 
 @Mixin(ServerRecipeBook.class)
 public abstract class ServerRecipeBookMixin {
 
     @Shadow
     @Final
-    private ServerRecipeBook.DisplayCollector collector;
+    private ServerRecipeBook.DisplayResolver displayResolver;
 
     @Inject(
-            method = "sendInitRecipesPacket",
+            method = "sendInitialRecipeBook",
             at = @At("HEAD"),
             cancellable = true
     )
-    private void injectAllRecipes(ServerPlayerEntity player, CallbackInfo ci) {
+    private void injectAllRecipes(ServerPlayer player, CallbackInfo ci) {
         // Отправляем настройки книги рецептов
-        player.networkHandler.sendPacket(new RecipeBookSettingsS2CPacket(((RecipeBook)(Object)this).getOptions()));
+        player.connection.send(new ClientboundRecipeBookSettingsPacket(((RecipeBook)(Object)this).getBookSettings()));
 
         // Собираем все рецепты сервера
-        List<RecipeBookAddS2CPacket.Entry> allEntries = new ArrayList<>();
+        List<ClientboundRecipeBookAddPacket.Entry> allEntries = new ArrayList<>();
 
         // Получаем все рецепты через RecipeManager
-        Collection<RecipeEntry<?>> allRecipes = player.getEntityWorld().getServer().getRecipeManager().values();
+        Collection<RecipeHolder<?>> allRecipes = player.level().getServer().getRecipeManager().getRecipes();
 
-        for (RecipeEntry<?> recipeEntry : allRecipes) {
-            RegistryKey<Recipe<?>> recipeKey = recipeEntry.id(); // ключ рецепта
+        for (RecipeHolder<?> recipeEntry : allRecipes) {
+            ResourceKey<Recipe<?>> recipeKey = recipeEntry.id(); // ключ рецепта
 
-            collector.displaysForRecipe(recipeKey, display -> {
+            displayResolver.displaysForRecipe(recipeKey, display -> {
                 // Можно фильтровать, например, по display или recipeEntry
-                if (Registries.RECIPE_DISPLAY.getId(display.display().serializer()) == null) {
+                if (BuiltInRegistries.RECIPE_DISPLAY.getKey(display.display().type()) == null) {
                     System.out.println("[JEB Debug] Skipping unknown recipe display: " + display.getClass().getName());
                     return;
                 }
-                allEntries.add(new RecipeBookAddS2CPacket.Entry(display, false, false));
+                allEntries.add(new ClientboundRecipeBookAddPacket.Entry(display, false, false));
             });
         }
 
         // Отправляем весь список рецептов игроку
-        player.networkHandler.sendPacket(new RecipeBookAddS2CPacket(allEntries, true));
+        player.connection.send(new ClientboundRecipeBookAddPacket(allEntries, true));
 
         // Отменяем оригинальный метод
         ci.cancel();

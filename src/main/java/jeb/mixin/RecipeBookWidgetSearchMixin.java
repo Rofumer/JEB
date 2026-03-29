@@ -6,49 +6,51 @@ import jeb.accessor.RecipeBookWidgetBridge;
 import jeb.client.FavoritesManager;
 import jeb.client.JEBClient;
 import jeb.client.RecipeIndex;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ButtonTextures;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.ingame.CraftingScreen;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.ClientRecipeBook;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.CycleButton;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.WidgetSprites;
 import net.minecraft.client.gui.screen.recipebook.*;
-import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.widget.CyclingButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.input.KeyInput;
-import net.minecraft.item.Items;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.recipe.NetworkRecipeId;
-import net.minecraft.recipe.RecipeFinder;
-import net.minecraft.recipe.book.RecipeBookCategories;
-import net.minecraft.client.recipebook.RecipeBookType;
-import net.minecraft.recipe.book.RecipeBookCategory;
-import net.minecraft.recipe.book.RecipeBookGroup;
-import net.minecraft.recipe.display.RecipeDisplay;
-import net.minecraft.recipe.display.ShapedCraftingRecipeDisplay;
-import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
-import net.minecraft.recipe.display.SlotDisplay;
-import net.minecraft.recipe.display.SlotDisplayContexts;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.screen.AbstractCraftingScreenHandler;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.context.ContextParameterMap;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookPage;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookTabButton;
+import net.minecraft.client.gui.screens.recipebook.RecipeButton;
+import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
+import net.minecraft.client.gui.screens.recipebook.RecipeUpdateListener;
+import net.minecraft.client.gui.screens.recipebook.SearchRecipeBookCategory;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.context.ContextMap;
+import net.minecraft.world.entity.player.StackedItemContents;
+import net.minecraft.world.inventory.AbstractCraftingMenu;
+import net.minecraft.world.inventory.RecipeBookMenu;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeBookCategories;
+import net.minecraft.world.item.crafting.RecipeBookCategory;
+import net.minecraft.world.item.crafting.display.RecipeDisplay;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
+import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
+import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import com.google.common.collect.Lists;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.client.recipebook.ClientRecipeBook;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.recipe.RecipeDisplayEntry;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.tag.TagKey;
-import net.minecraft.screen.AbstractRecipeScreenHandler;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -62,82 +64,82 @@ import java.util.*;
 
 import static jeb.client.JEBClient.*;
 
-@Mixin(RecipeBookWidget.class)
-public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreenHandler> implements RecipeBookWidgetBridge {
+@Mixin(RecipeBookComponent.class)
+public abstract class RecipeBookWidgetSearchMixin<T extends RecipeBookMenu> implements RecipeBookWidgetBridge {
 
-    @Shadow protected AbstractRecipeScreenHandler craftingScreenHandler;
+    @Shadow protected RecipeBookMenu menu;
 
     // приватный метод vanilla
     @Shadow
-    public abstract void refresh();
+    public abstract void recipesUpdated();
 
     @Override
     public void jeb$refresh() {
-        this.refresh();
+        this.recipesUpdated();
     }
 
     @Shadow @Final
-    private ClientRecipeBook recipeBook;
+    private ClientRecipeBook book;
 
     @Shadow @Final
-    private RecipeFinder recipeFinder;
+    private StackedItemContents stackedContents;
 
     @Shadow
-    private RecipeGroupButtonWidget currentTab;
+    private RecipeBookTabButton selectedTab;
 
     @Shadow
-    private MinecraftClient client;
+    private Minecraft minecraft;
 
     @Shadow
-    private RecipeBookResults recipesArea;
+    private RecipeBookPage recipeBookPage;
 
     @Shadow
-    private TextFieldWidget searchField;
+    private EditBox searchBox;
 
     @Shadow
-    protected CyclingButtonWidget<Boolean> toggleCraftableButton;
+    protected CycleButton<Boolean> filterButton;
 
     @Shadow @Final
-    private List<RecipeBookWidget.Tab> tabs;
+    private List<RecipeBookComponent.TabInfo> tabInfos;
 
     @Shadow @Final
-    private List<RecipeGroupButtonWidget> tabButtons;
+    private List<RecipeBookTabButton> tabButtons;
 
     @Unique
-    private CyclingButtonWidget<Boolean> jeb$customToggleButton;
+    private CycleButton<Boolean> jeb$customToggleButton;
 
     @Unique
     private boolean jeb$customToggleState = false;
 
     @Unique
-    private static final ButtonTextures TEXTURES_ALT = new ButtonTextures(
-            Identifier.ofVanilla("recipe_book/crafting_overlay"),
-            Identifier.ofVanilla("recipe_book/crafting_overlay_highlighted")
+    private static final WidgetSprites TEXTURES_ALT = new WidgetSprites(
+            Identifier.withDefaultNamespace("recipe_book/crafting_overlay"),
+            Identifier.withDefaultNamespace("recipe_book/crafting_overlay_highlighted")
     );
 
     @Unique
-    private static final ButtonTextures TEXTURES_DEFAULT = new ButtonTextures(
-            Identifier.ofVanilla("recipe_book/crafting_overlay_disabled"),
-            Identifier.ofVanilla("recipe_book/crafting_overlay_disabled_highlighted")
+    private static final WidgetSprites TEXTURES_DEFAULT = new WidgetSprites(
+            Identifier.withDefaultNamespace("recipe_book/crafting_overlay_disabled"),
+            Identifier.withDefaultNamespace("recipe_book/crafting_overlay_disabled_highlighted")
     );
 
     // ===== кастомная кнопка (CyclingButtonWidget) =====
 
-    @Inject(method = "reset", at = @At("TAIL"))
+    @Inject(method = "initVisuals", at = @At("TAIL"))
     private void jeb$addCustomToggleButton(CallbackInfo ci) {
-        int x = this.toggleCraftableButton.getX();
-        int y = this.toggleCraftableButton.getY() + 125;
+        int x = this.filterButton.getX();
+        int y = this.filterButton.getY() + 125;
 
         // true → включён наш 3x3-режим
-        jeb$customToggleButton = CyclingButtonWidget
+        jeb$customToggleButton = CycleButton
                 .onOffBuilder(JEBClient.customToggleEnabled)
-                .tooltip(value -> Tooltip.of(Text.of(value ? "Show 3x3" : "Show 2x2")))
-                .icon((button, value) -> {
-                    ButtonTextures textures = value ? TEXTURES_ALT : TEXTURES_DEFAULT;
-                    return textures.get(true, button.isSelected());
+                .withTooltip(value -> Tooltip.create(Component.nullToEmpty(value ? "Show 3x3" : "Show 2x2")))
+                .withSprite((button, value) -> {
+                    WidgetSprites textures = value ? TEXTURES_ALT : TEXTURES_DEFAULT;
+                    return textures.get(true, button.isHoveredOrFocused());
                 })
-                .labelType(CyclingButtonWidget.LabelType.HIDE)
-                .build(x, y, 20, 16, Text.of("!"), (button, value) -> {
+                .displayState(CycleButton.DisplayState.HIDE)
+                .create(x, y, 20, 16, Component.nullToEmpty("!"), (button, value) -> {
                     jeb$customToggleState = value;
                     JEBClient.customToggleEnabled = value;
                     JEBClient.saveConfig();
@@ -151,24 +153,24 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             method = "render",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/widget/CyclingButtonWidget;render(Lnet/minecraft/client/gui/DrawContext;IIF)V",
+                    target = "Lnet/minecraft/client/gui/components/CycleButton;render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V",
                     ordinal = 0,
                     shift = At.Shift.AFTER
             )
     )
-    private void jeb$renderCustomToggle(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    private void jeb$renderCustomToggle(GuiGraphics context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (jeb$customToggleButton != null && jeb$customToggleButton.visible) {
             jeb$customToggleButton.render(context, mouseX, mouseY, delta);
         }
     }
 
-    @Inject(method = "populateAllRecipes", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "selectMatchingRecipes()V", at = @At("HEAD"), cancellable = true)
     private void populateAllRecipes(CallbackInfo ci) {
         ci.cancel();
     }
 
     @Inject(method = "mouseClicked", at = @At("TAIL"), cancellable = true)
-    private void jeb$clickCustomToggle(Click click, boolean doubled, CallbackInfoReturnable<Boolean> cir) {
+    private void jeb$clickCustomToggle(MouseButtonEvent click, boolean doubled, CallbackInfoReturnable<Boolean> cir) {
         if (jeb$customToggleButton != null && jeb$customToggleButton.mouseClicked(click, doubled)) {
             // всё уже обработано в callback у builder
             cir.setReturnValue(true);
@@ -179,13 +181,13 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
     @Unique
     private boolean isFavoritesTabActive() {
-        return currentTab != null && currentTab.getCategory() == RecipeBookCategories.CAMPFIRE;
+        return selectedTab != null && selectedTab.getCategory() == RecipeBookCategories.CAMPFIRE;
     }
 
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
-    private void onKeyPressed(KeyInput input, CallbackInfoReturnable<Boolean> cir) {
-        if (JEBClient.keyBinding2.matchesKey(input)) {
-            AnimatedResultButton hovered = ((RecipeBookResultsAccessor) recipesArea).getHoveredResultButton();
+    private void onKeyPressed(KeyEvent input, CallbackInfoReturnable<Boolean> cir) {
+        if (JEBClient.keyBinding2.matches(input)) {
+            RecipeButton hovered = ((RecipeBookResultsAccessor) recipeBookPage).getHoveredResultButton();
             if (hovered != null) {
                 if (isFavoritesTabActive()) {
                     FavoritesManager.removeFavorite(hovered.getDisplayStack());
@@ -201,31 +203,31 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
     // хук после клика по рецепту
     @Inject(
-            method = "select",
+            method = "tryPlaceRecipe",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/network/ClientPlayerInteractionManager;clickRecipe(ILnet/minecraft/recipe/NetworkRecipeId;Z)V",
+                    target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;handlePlaceRecipe(ILnet/minecraft/world/item/crafting/display/RecipeDisplayId;Z)V",
                     shift = At.Shift.AFTER
             ),
             cancellable = false,
             require = 0
     )
     private void onRecipeClicked(
-            RecipeResultCollection results, NetworkRecipeId recipeId, boolean craftAll, CallbackInfoReturnable<Boolean> cir
+            RecipeCollection results, RecipeDisplayId recipeId, boolean craftAll, CallbackInfoReturnable<Boolean> cir
     ) {
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         if (client.player == null) return;
 
         ClientRecipeBook recipeBook = client.player.getRecipeBook();
-        Map<NetworkRecipeId, RecipeDisplayEntry> recipes =
+        Map<RecipeDisplayId, RecipeDisplayEntry> recipes =
                 ((ClientRecipeBookAccessor) recipeBook).getRecipes();
 
         RecipeDisplayEntry entry = recipes.get(recipeId);
-        Screen screen = client.currentScreen;
+        Screen screen = client.screen;
 
-        if (screen instanceof RecipeBookProvider provider && entry != null) {
+        if (screen instanceof RecipeUpdateListener provider && entry != null) {
             if (!results.isCraftable(recipeId) && recipeId.index() != 9999) {
-                provider.onCraftFailed(entry.display());
+                provider.fillGhostRecipe(entry.display());
             }
         }
     }
@@ -236,7 +238,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         if (entry.craftingRequirements().isEmpty()) return false;
 
         return entry.craftingRequirements().get().stream().anyMatch(ingredient ->
-                ingredient.getMatchingItems().anyMatch(regEntry -> {
+                ingredient.items().anyMatch(regEntry -> {
                     ItemStack stack = new ItemStack(regEntry.value());
                     String itemName = stack.getItem().getName().getString().toLowerCase(Locale.ROOT);
                     return itemName.contains(query);
@@ -251,22 +253,22 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
         SlotDisplay resultSlot = entry.display().result();
 
-        ContextParameterMap context = SlotDisplayContexts.createParameters(
-                Objects.requireNonNull(this.client.world)
+        ContextMap context = SlotDisplayContext.fromLevel(
+                Objects.requireNonNull(this.minecraft.level)
         );
 
-        List<ItemStack> stacks = resultSlot.getStacks(context);
+        List<ItemStack> stacks = resultSlot.resolveForStacks(context);
         if (stacks.isEmpty()) return false;
 
         ItemStack stack = stacks.get(0);
         if (stack == null || stack.isEmpty()) return false;
 
-        String name = stack.getName().getString().toLowerCase(Locale.ROOT);
+        String name = stack.getHoverName().getString().toLowerCase(Locale.ROOT);
         String id = stack.getItem().toString().toLowerCase(Locale.ROOT);
-        String key = stack.getItem().getTranslationKey().toLowerCase(Locale.ROOT);
+        String key = stack.getItem().getDescriptionId().toLowerCase(Locale.ROOT);
 
         if (modName != null && !modName.isEmpty()
-                && !Registries.ITEM.getId(stack.getItem()).getNamespace().contains(modName.toLowerCase(Locale.ROOT))) {
+                && !BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace().contains(modName.toLowerCase(Locale.ROOT))) {
             return false;
         }
 
@@ -274,14 +276,14 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             return true;
         }
 
-        RegistryWrapper.WrapperLookup lookup = client.world.getRegistryManager();
-        Item.TooltipContext tooltipContext = Item.TooltipContext.create(lookup);
-        TooltipType tooltipType = TooltipType.Default.BASIC;
+        HolderLookup.Provider lookup = minecraft.level.registryAccess();
+        Item.TooltipContext tooltipContext = Item.TooltipContext.of(lookup);
+        TooltipFlag tooltipType = TooltipFlag.Default.NORMAL;
 
         try {
-            List<Text> tooltip = stack.getTooltip(tooltipContext, client.player, tooltipType);
-            for (Text line : tooltip) {
-                String clean = Formatting.strip(line.getString()).toLowerCase(Locale.ROOT).trim();
+            List<Component> tooltip = stack.getTooltipLines(tooltipContext, minecraft.player, tooltipType);
+            for (Component line : tooltip) {
+                String clean = ChatFormatting.stripFormatting(line.getString()).toLowerCase(Locale.ROOT).trim();
                 if (clean.contains(query)) return true;
             }
         } catch (Exception e) {
@@ -292,20 +294,20 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     }
 
     private static RecipeDisplayEntry createDummySingleItemRecipe(ItemStack stack) {
-        Identifier id = Registries.ITEM.getId(stack.getItem());
-        NetworkRecipeId recipeId = new NetworkRecipeId(9999);
+        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        RecipeDisplayId recipeId = new RecipeDisplayId(9999);
 
         List<SlotDisplay> slots = List.of(
-                new SlotDisplay.TagSlotDisplay(TagKey.of(RegistryKeys.ITEM, id))
+                new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, id))
         );
-        SlotDisplay.StackSlotDisplay resultSlot = new SlotDisplay.StackSlotDisplay(stack.copy());
+        SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(stack.copy());
         SlotDisplay.ItemSlotDisplay stationSlot =
-                new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", "crafting_table")));
+                new SlotDisplay.ItemSlotDisplay(BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("minecraft", "crafting_table")));
 
         RecipeDisplay display = new ShapelessCraftingRecipeDisplay(slots, resultSlot, stationSlot);
         OptionalInt group = OptionalInt.empty();
         RecipeBookCategory category = RecipeBookCategories.CRAFTING_MISC;
-        List<Ingredient> ingredients = List.of(Ingredient.ofItems(stack.getItem()));
+        List<Ingredient> ingredients = List.of(Ingredient.of(stack.getItem()));
 
         return new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
     }
@@ -317,9 +319,9 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     //@Unique
     //private List<RecipeResultCollection> filtered = new ArrayList<>();
 
-    @Inject(method = "refreshResults", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "updateCollections", at = @At("HEAD"), cancellable = true)
     private void onCustomSearch(boolean resetCurrentPage, boolean filteringCraftable, CallbackInfo ci) {
-        String rawInput = searchField.getText();
+        String rawInput = searchBox.getValue();
 
         boolean searchIngredients = rawInput.startsWith("#");
         boolean searchByResult = rawInput.startsWith("~");
@@ -337,43 +339,43 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             }
         }
 
-        ClientPlayNetworkHandler handler = client.getNetworkHandler();
+        ClientPacketListener handler = minecraft.getConnection();
         if (handler == null) return;
 
-        List<RecipeResultCollection> collections = recipeBook.getResultsForCategory(currentTab.getCategory());
-        List<RecipeResultCollection> filteredList = new ArrayList<>();
+        List<RecipeCollection> collections = book.getCollection(selectedTab.getCategory());
+        List<RecipeCollection> filteredList = new ArrayList<>();
 
         // ===== режим "~item_id" → показать рецепты ингредиентов результата =====
         if (rawInput.startsWith("~") && !isFavoritesTabActive()) {
-            ContextParameterMap context = SlotDisplayContexts.createParameters(
-                    Objects.requireNonNull(this.client.world)
+            ContextMap context = SlotDisplayContext.fromLevel(
+                    Objects.requireNonNull(this.minecraft.level)
             );
-            List<RecipeResultCollection> ingredientsList = new ArrayList<>();
+            List<RecipeCollection> ingredientsList = new ArrayList<>();
 
-            for (RecipeResultCollection collection : recipeBook.getResultsForCategory(currentTab.getCategory())) {
-                for (RecipeDisplayEntry recipe1 : collection.getAllRecipes()) {
+            for (RecipeCollection collection : book.getCollection(selectedTab.getCategory())) {
+                for (RecipeDisplayEntry recipe1 : collection.getRecipes()) {
                     SlotDisplay resultSlot = recipe1.display().result();
-                    List<ItemStack> stacks = resultSlot.getStacks(context);
+                    List<ItemStack> stacks = resultSlot.resolveForStacks(context);
                     if (stacks.isEmpty()) continue;
 
                     ItemStack result = stacks.get(0);
-                    String resultName = Registries.ITEM.getId(result.getItem()).getPath().toLowerCase(Locale.ROOT);
+                    String resultName = BuiltInRegistries.ITEM.getKey(result.getItem()).getPath().toLowerCase(Locale.ROOT);
 
                     if (resultName.equals(query)) {
                         for (Ingredient ingredient : recipe1.craftingRequirements().get()) {
-                            for (ItemStack stack : ingredient.toDisplay().getStacks(context)) {
+                            for (ItemStack stack : ingredient.display().resolveForStacks(context)) {
                                 if (!stack.isEmpty()) {
                                     boolean foundReal = false;
-                                    for (RecipeResultCollection subCollection : recipeBook.getResultsForCategory(RecipeBookType.CRAFTING)) {
-                                        for (RecipeDisplayEntry subRecipe : subCollection.getAllRecipes()) {
+                                    for (RecipeCollection subCollection : book.getCollection(SearchRecipeBookCategory.CRAFTING)) {
+                                        for (RecipeDisplayEntry subRecipe : subCollection.getRecipes()) {
 
                                             resultSlot = subRecipe.display().result();
-                                            stacks = resultSlot.getStacks(context);
+                                            stacks = resultSlot.resolveForStacks(context);
                                             if (stacks.isEmpty()) continue;
 
                                             ItemStack subResult = stacks.get(0);
-                                            if (!subResult.isEmpty() && ItemStack.areItemsEqual(subResult, stack)) {
-                                                subCollection.populateRecipes(recipeFinder, recipe -> true);
+                                            if (!subResult.isEmpty() && ItemStack.isSameItem(subResult, stack)) {
+                                                subCollection.selectRecipes(stackedContents, recipe -> true);
                                                 ingredientsList.add(subCollection);
                                                 foundReal = true;
                                                 break;
@@ -384,8 +386,8 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
                                     if (!foundReal) {
                                         RecipeDisplayEntry fakeRecipe = createDummySingleItemRecipe(stack);
-                                        RecipeResultCollection fakeCollection = new RecipeResultCollection(List.of(fakeRecipe));
-                                        fakeCollection.populateRecipes(recipeFinder, recipe -> true);
+                                        RecipeCollection fakeCollection = new RecipeCollection(List.of(fakeRecipe));
+                                        fakeCollection.selectRecipes(stackedContents, recipe -> true);
                                         ingredientsList.add(fakeCollection);
                                     }
                                     break;
@@ -397,7 +399,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             }
 
             filteredList.addAll(ingredientsList);
-            recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
+            recipeBookPage.updateCollections(filteredList, resetCurrentPage, filteringCraftable);
             ci.cancel();
             return;
         }
@@ -405,21 +407,21 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         // ===== вкладка избранного =====
         if (isFavoritesTabActive()) {
             Set<Identifier> favoriteItems = FavoritesManager.loadFavoriteItemIds();
-            List<RecipeResultCollection> craftingCollections = recipeBook.getResultsForCategory(RecipeBookType.CRAFTING);
+            List<RecipeCollection> craftingCollections = book.getCollection(SearchRecipeBookCategory.CRAFTING);
 
-            for (RecipeResultCollection collection : craftingCollections) {
-                boolean hasFavorite = collection.getAllRecipes().stream()
-                        .flatMap(entry -> entry.getStacks(SlotDisplayContexts.createParameters(MinecraftClient.getInstance().world)).stream())
-                        .map(stack -> Registries.ITEM.getId(stack.getItem()))
+            for (RecipeCollection collection : craftingCollections) {
+                boolean hasFavorite = collection.getRecipes().stream()
+                        .flatMap(entry -> entry.resultItems(SlotDisplayContext.fromLevel(Minecraft.getInstance().level)).stream())
+                        .map(stack -> BuiltInRegistries.ITEM.getKey(stack.getItem()))
                         .anyMatch(favoriteItems::contains);
 
                 if (hasFavorite) {
-                    collection.populateRecipes(recipeFinder, recipe -> true);
+                    collection.selectRecipes(stackedContents, recipe -> true);
                     filteredList.add(collection);
                 }
             }
 
-            recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
+            recipeBookPage.updateCollections(filteredList, resetCurrentPage, filteringCraftable);
             ci.cancel();
             return;
         }
@@ -428,44 +430,44 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         final String finalModName = modName;
 
         // ===== быстрый индексированный поиск =====
-        filteredList = new ArrayList<>(RecipeIndex.fastSearch(currentTab.getCategory(), query, modName, searchIngredients));
+        filteredList = new ArrayList<>(RecipeIndex.fastSearch(selectedTab.getCategory(), query, modName, searchIngredients));
 
-        for (RecipeResultCollection col : filteredList) {
+        for (RecipeCollection col : filteredList) {
             if (JEBClient.customToggleEnabled) {
-                col.populateRecipes(recipeFinder, recipe -> true);
+                col.selectRecipes(stackedContents, recipe -> true);
             } else {
-                col.populateRecipes(recipeFinder, this::canDisplay);
+                col.selectRecipes(stackedContents, this::canDisplay);
             }
         }
 
         if (filteringCraftable) {
-            filteredList.removeIf(rc -> !rc.hasCraftableRecipes());
+            filteredList.removeIf(rc -> !rc.hasCraftable());
         }
 
         if (!Objects.equals(string, rawInput)) {
             filtered = RecipeIndex.generateCustomRecipeList(rawInput);
         }
 
-        Screen screen = client.currentScreen;
+        Screen screen = minecraft.screen;
 
-        if (!toggleCraftableButton.getValue()) {
+        if (!filterButton.getValue()) {
             filteredList.addAll(filtered);
         }
 
         string = rawInput;
 
-        recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
+        recipeBookPage.updateCollections(filteredList, resetCurrentPage, filteringCraftable);
         ci.cancel();
     }
 
     @Unique
     private boolean canDisplay(RecipeDisplay display) {
-        if (!(this.craftingScreenHandler instanceof AbstractCraftingScreenHandler craftingHandler)) {
+        if (!(this.menu instanceof AbstractCraftingMenu craftingHandler)) {
             return true;
         }
 
-        int i = craftingHandler.getWidth();
-        int j = craftingHandler.getHeight();
+        int i = craftingHandler.getGridWidth();
+        int j = craftingHandler.getGridHeight();
 
         if (display instanceof ShapedCraftingRecipeDisplay shaped) {
             return i >= shaped.width() && j >= shaped.height();
@@ -478,24 +480,24 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
     @Unique
     private static Optional<Item> getItemFromSlotDisplay(SlotDisplay slot) {
-        if (slot instanceof SlotDisplay.StackSlotDisplay stackSlot) {
+        if (slot instanceof SlotDisplay.ItemStackSlotDisplay stackSlot) {
             ItemStack stack = stackSlot.stack();
             return Optional.of(stack.getItem());
         }
 
         if (slot instanceof SlotDisplay.ItemSlotDisplay itemSlot) {
-            RegistryEntry<Item> item = itemSlot.item();
+            Holder<Item> item = itemSlot.item();
             return Optional.of(item.value());
         }
 
         if (slot instanceof SlotDisplay.TagSlotDisplay tagSlot) {
             TagKey<Item> tag = tagSlot.tag();
-            for (RegistryEntry<Item> entry : Registries.ITEM.iterateEntries(tag)) {
+            for (Holder<Item> entry : BuiltInRegistries.ITEM.getTagOrEmpty(tag)) {
                 return Optional.of(entry.value());
             }
         }
 
-        if (slot instanceof SlotDisplay.CompositeSlotDisplay composite) {
+        if (slot instanceof SlotDisplay.Composite composite) {
             List<SlotDisplay> contents = composite.contents();
             for (SlotDisplay inner : contents) {
                 Optional<Item> maybeItem = getItemFromSlotDisplay(inner);

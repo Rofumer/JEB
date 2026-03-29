@@ -1,32 +1,31 @@
 package jeb.mixin;
 
-import net.minecraft.client.gui.screen.recipebook.RecipeBookWidget;
-import net.minecraft.client.gui.screen.recipebook.RecipeGroupButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.screen.AbstractCraftingScreenHandler;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
 import java.util.List;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookTabButton;
 
-@Mixin(RecipeBookWidget.class)
+@Mixin(RecipeBookComponent.class)
 public interface RecipeBookWidgetAccessor {
-    @Invoker("reset")
+    @Invoker("initVisuals")
     void invokeReset();
 
-    @Accessor("searchField")
-    TextFieldWidget getSearchField();
+    @Accessor("searchBox")
+    EditBox getSearchField();
     @Accessor("tabButtons")
     List<?> getTabButtons();
-    @Accessor("tabs")
-    List<RecipeBookWidget.Tab> getTabs();
-    @Invoker("refreshTabButtons")
+    @Accessor("tabInfos")
+    List<RecipeBookComponent.TabInfo> getTabs();
+    @Invoker("updateTabs")
     void jeb$refreshTabButtons(boolean filteringCraftable);
-    @Invoker("populateAllRecipes")
+    @Invoker("selectMatchingRecipes")
     void jeb$populateAllRecipes();
-    @Accessor("currentTab")
-    RecipeGroupButtonWidget getSelectedTab();
-    @Accessor("currentTab")
-    void setSelectedTab(RecipeGroupButtonWidget tab);
+    @Accessor("selectedTab")
+    RecipeBookTabButton getSelectedTab();
+    @Accessor("selectedTab")
+    void setSelectedTab(RecipeBookTabButton tab);
 }

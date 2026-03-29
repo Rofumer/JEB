@@ -2,21 +2,27 @@ package jeb.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
 import jeb.accessor.ClientRecipeBookAccessor;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.Click;
+import net.minecraft.client.ClientRecipeBook;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.recipebook.*;
-import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.client.recipebook.ClientRecipeBook;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.packet.c2s.play.RecipeBookDataC2SPacket;
-import net.minecraft.recipe.NetworkRecipeId;
-import net.minecraft.recipe.RecipeDisplayEntry;
-import net.minecraft.recipe.display.RecipeDisplay;
-import net.minecraft.recipe.display.ShapedCraftingRecipeDisplay;
-import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
-import net.minecraft.registry.Registries;
-import net.minecraft.screen.AbstractCraftingScreenHandler;
-import net.minecraft.util.context.ContextParameterMap;
+import net.minecraft.client.gui.screens.recipebook.OverlayRecipeComponent;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookPage;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookTabButton;
+import net.minecraft.client.gui.screens.recipebook.RecipeButton;
+import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.protocol.game.ServerboundRecipeBookSeenRecipePacket;
+import net.minecraft.util.context.ContextMap;
+import net.minecraft.world.inventory.AbstractCraftingMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.display.RecipeDisplay;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
+import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
+import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -30,37 +36,37 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-@Mixin(RecipeBookResults.class)
+@Mixin(RecipeBookPage.class)
 public class RecipeBookResultsMixin {
 
     @Shadow
-    private RecipeBookWidget<?> recipeBookWidget;
+    private RecipeBookComponent<?> parent;
     @Shadow
-    private RecipeAlternativesWidget alternatesWidget;
+    private OverlayRecipeComponent overlay;
 
     @Shadow
-    private NetworkRecipeId lastClickedRecipe;
+    private RecipeDisplayId lastClickedRecipe;
 
 
 
     @Shadow
     @Nullable
-    private RecipeResultCollection resultCollection;
+    private RecipeCollection lastClickedRecipeCollection;
 
     @Shadow
-    private AnimatedResultButton hoveredResultButton;
+    private RecipeButton hoveredButton;
 
     @Inject(
             method = "mouseClicked",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/screen/recipebook/AnimatedResultButton;mouseClicked(Lnet/minecraft/client/gui/Click;Z)Z",
+                    target = "Lnet/minecraft/client/gui/screens/recipebook/RecipeButton;mouseClicked(Lnet/minecraft/client/input/MouseButtonEvent;Z)Z",
                     shift = At.Shift.AFTER
             ),
             cancellable = true
     )
     private void onRightClickInject(
-            Click click, int left, int top, int width, int height, boolean bl, CallbackInfoReturnable<Boolean> cir, @Local ContextParameterMap contextParameterMap, @Local AnimatedResultButton animatedResultButton
+            MouseButtonEvent click, int left, int top, int width, int height, boolean bl, CallbackInfoReturnable<Boolean> cir, @Local ContextMap contextParameterMap, @Local RecipeButton animatedResultButton
     ) {
 
         //if (!(MinecraftClient.getInstance().player.currentScreenHandler instanceof AbstractCraftingScreenHandler)) {
@@ -68,7 +74,7 @@ public class RecipeBookResultsMixin {
         //    return;
         //}
 
-        animatedResultButton = hoveredResultButton;
+        animatedResultButton = hoveredButton;
         if (animatedResultButton  != null) {
         //if (animatedResultButton.mouseClicked(mouseX, mouseY, button)) {
 
@@ -76,13 +82,13 @@ public class RecipeBookResultsMixin {
             if (click.button() == 2) {
                 ItemStack stack = animatedResultButton.getDisplayStack();
                 //String itemName = stack.getItem().asItem().toString();
-                String itemName = Registries.ITEM.getId(stack.getItem()).getPath().toLowerCase(Locale.ROOT);
+                String itemName = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().toLowerCase(Locale.ROOT);
                 String searchText = "~" + itemName.toLowerCase(Locale.ROOT);
 
 // Устанавливаем в поиск
-                ((RecipeBookWidgetAccessor) recipeBookWidget).getSearchField().setText(searchText);
-                ((RecipeBookWidgetAccessor) recipeBookWidget).setSelectedTab((RecipeGroupButtonWidget) ((RecipeBookWidgetAccessor) recipeBookWidget).getTabButtons().get(0));
-                ((RecipeBookWidgetAccessor) recipeBookWidget).invokeReset();
+                ((RecipeBookWidgetAccessor) parent).getSearchField().setValue(searchText);
+                ((RecipeBookWidgetAccessor) parent).setSelectedTab((RecipeBookTabButton) ((RecipeBookWidgetAccessor) parent).getTabButtons().get(0));
+                ((RecipeBookWidgetAccessor) parent).invokeReset();
 
                 cir.setReturnValue(true);
                 cir.cancel();
@@ -90,13 +96,13 @@ public class RecipeBookResultsMixin {
 
             if (click.button() == 1) {
                 ItemStack stack = animatedResultButton.getDisplayStack();
-                String itemName = Registries.ITEM.getId(stack.getItem()).toString().toLowerCase(Locale.ROOT); // Локализованное имя (например, "Булыжник")
+                String itemName = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().toLowerCase(Locale.ROOT); // Локализованное имя (например, "Булыжник")
                 String searchText = "#" + itemName.toLowerCase(Locale.ROOT);
 
 // Устанавливаем в поиск
-                ((RecipeBookWidgetAccessor) recipeBookWidget).getSearchField().setText(searchText);
-                ((RecipeBookWidgetAccessor) recipeBookWidget).setSelectedTab((RecipeGroupButtonWidget) ((RecipeBookWidgetAccessor) recipeBookWidget).getTabButtons().get(0));
-                ((RecipeBookWidgetAccessor) recipeBookWidget).invokeReset();
+                ((RecipeBookWidgetAccessor) parent).getSearchField().setValue(searchText);
+                ((RecipeBookWidgetAccessor) parent).setSelectedTab((RecipeBookTabButton) ((RecipeBookWidgetAccessor) parent).getTabButtons().get(0));
+                ((RecipeBookWidgetAccessor) parent).invokeReset();
 
                 cir.setReturnValue(true);
                 cir.cancel();
@@ -106,35 +112,35 @@ public class RecipeBookResultsMixin {
             if (click.button() == 0) {
 
 
-                if (!(MinecraftClient.getInstance().player.currentScreenHandler instanceof AbstractCraftingScreenHandler)) {
+                if (!(Minecraft.getInstance().player.containerMenu instanceof AbstractCraftingMenu)) {
                     // Не наш контейнер — не трогаем, пусть работает обычный код!
                     return;
                 }
 
                 //System.out.println(animatedResultButton.getCurrentId().toString());
 
-                MinecraftClient client = MinecraftClient.getInstance();
+                Minecraft client = Minecraft.getInstance();
                 ClientRecipeBook recipeBook = client.player.getRecipeBook();
 
-                Map<NetworkRecipeId, RecipeDisplayEntry> recipes = ((ClientRecipeBookAccessor) recipeBook).getRecipes();
+                Map<RecipeDisplayId, RecipeDisplayEntry> recipes = ((ClientRecipeBookAccessor) recipeBook).getRecipes();
 
-                RecipeDisplayEntry entry = recipes.get(animatedResultButton.getCurrentId());
+                RecipeDisplayEntry entry = recipes.get(animatedResultButton.getCurrentRecipe());
 
                 if(entry != null) {
 
-                    RecipeResultCollection myCustomRecipeResultCollection = new RecipeResultCollection(List.of(entry));
+                    RecipeCollection myCustomRecipeResultCollection = new RecipeCollection(List.of(entry));
 
                     if(!canDisplay(entry.display())) {
-                        alternatesWidget.showAlternativesForResult(myCustomRecipeResultCollection, contextParameterMap, false, animatedResultButton.getX(), animatedResultButton.getY(), left + width / 2, top + 13 + height / 2, (float) animatedResultButton.getWidth());
+                        overlay.init(myCustomRecipeResultCollection, contextParameterMap, false, animatedResultButton.getX(), animatedResultButton.getY(), left + width / 2, top + 13 + height / 2, (float) animatedResultButton.getWidth());
                     }
                     else
                     {
-                        this.lastClickedRecipe = animatedResultButton.getCurrentId();
-                        this.resultCollection = animatedResultButton.getResultCollection();
-                        recipeBook.unmarkHighlighted(animatedResultButton.getCurrentId());
-                        ClientPlayNetworkHandler networkHandler = MinecraftClient.getInstance().getNetworkHandler();
-                        if(!(animatedResultButton.getCurrentId().index() == 9999)) {
-                            networkHandler.sendPacket(new RecipeBookDataC2SPacket(animatedResultButton.getCurrentId()));
+                        this.lastClickedRecipe = animatedResultButton.getCurrentRecipe();
+                        this.lastClickedRecipeCollection = animatedResultButton.getCollection();
+                        recipeBook.removeHighlight(animatedResultButton.getCurrentRecipe());
+                        ClientPacketListener networkHandler = Minecraft.getInstance().getConnection();
+                        if(!(animatedResultButton.getCurrentRecipe().index() == 9999)) {
+                            networkHandler.send(new ServerboundRecipeBookSeenRecipePacket(animatedResultButton.getCurrentRecipe()));
                         }
                     }
                 }
@@ -147,13 +153,13 @@ public class RecipeBookResultsMixin {
     }
 
     private boolean canDisplay(RecipeDisplay display) {
-        RecipeBookWidget<?> widget = this.recipeBookWidget;
+        RecipeBookComponent<?> widget = this.parent;
 
-        AbstractCraftingScreenHandler handler = (AbstractCraftingScreenHandler) MinecraftClient.getInstance().player.currentScreenHandler;
+        AbstractCraftingMenu handler = (AbstractCraftingMenu) Minecraft.getInstance().player.containerMenu;
 
         //AbstractCraftingScreenHandler handler = ((RecipeBookWidgetAccessor) widget).getCraftingScreenHandler();
-        int i = handler.getWidth();
-        int j = handler.getHeight();
+        int i = handler.getGridWidth();
+        int j = handler.getGridHeight();
 
         return switch (display) {
             case ShapedCraftingRecipeDisplay shaped -> i >= shaped.width() && j >= shaped.height();

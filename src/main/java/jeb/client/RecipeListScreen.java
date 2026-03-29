@@ -4,31 +4,24 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 import com.mojang.logging.LogUtils;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
-import net.minecraft.item.Item;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.recipe.book.RecipeBookCategory;
-import net.minecraft.recipe.RecipeDisplayEntry;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.text.Text; // Исправленный импорт
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.recipebook.ClientRecipeBook;
-import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
-
-
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-
-
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import net.minecraft.client.ClientRecipeBook;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeBookCategory;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
 
 import static jeb.client.JEBClient.generateCustomRecipeList;
 import static jeb.client.RecipeLoader.loadRecipesFromLog;
@@ -39,7 +32,7 @@ public class RecipeListScreen extends Screen {
     private final ExecutorService executorService = Executors.newSingleThreadExecutor(); // Создаем новый поток
 
     public RecipeListScreen() {
-        super(Text.of("Recipe List"));
+        super(Component.nullToEmpty("Recipe List"));
     }
 
     static public Boolean sent = false;
@@ -62,17 +55,17 @@ public class RecipeListScreen extends Screen {
                 .build());*/
         /// ---
 
-        this.addDrawableChild(ButtonWidget.builder(Text.of("Load All Recipes"), button -> {
+        this.addRenderableWidget(Button.builder(Component.nullToEmpty("Load All Recipes"), button -> {
                     try {
                         loadAllRecipes();
                         JEBClient.PREGENERATED_RECIPES = generateCustomRecipeList("");
-                        client.setScreen(null);
-                        client.player.sendMessage(Text.literal("All recipes have been loaded"), false);
+                        minecraft.setScreen(null);
+                        minecraft.player.displayClientMessage(Component.literal("All recipes have been loaded"), false);
 
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
-                }).position(this.width / 2 - 100, this.height / 2 - 40)
+                }).pos(this.width / 2 - 100, this.height / 2 - 40)
                 .size(200, 20)
                 .build());
     }
@@ -145,20 +138,20 @@ public class RecipeListScreen extends Screen {
 
 
 
-                MinecraftClient client = MinecraftClient.getInstance();
+                Minecraft client = Minecraft.getInstance();
                 if (client.player != null) {
                     ClientRecipeBook recipeBook = client.player.getRecipeBook();
-                    List<RecipeResultCollection> recipes = recipeBook.getOrderedResults();
+                    List<RecipeCollection> recipes = recipeBook.getCollections();
 
 
                     // Проходим по всем коллекциям рецептов
-                    for (RecipeResultCollection collection : recipes) {
-                        List<RecipeDisplayEntry> entries = collection.getAllRecipes();
+                    for (RecipeCollection collection : recipes) {
+                        List<RecipeDisplayEntry> entries = collection.getRecipes();
 
                         // Преобразуем в строку и выводим подробности для каждого рецепта
                         for (RecipeDisplayEntry entry : entries) {
                             StringBuilder entryString = new StringBuilder("Display:" + entry.display().toString() + ";");
-                            entryString.append("Category:").append(Registries.RECIPE_BOOK_CATEGORY.getKey(entry.category()).toString()).append(";");
+                            entryString.append("Category:").append(BuiltInRegistries.RECIPE_BOOK_CATEGORY.getResourceKey(entry.category()).toString()).append(";");
                             entryString.append("NetworkID:").append(entry.id().toString()).append(";");
                             entryString.append("Group:").append(entry.group().toString()).append(";");
                             //entryString.append("Crafting Requirements Structure:").append(entry.craftingRequirements().toString()).append(";");
@@ -181,14 +174,14 @@ public class RecipeListScreen extends Screen {
                                 //System.out.println("Crafting Requirements:");
 
                                 for (Ingredient ingredient : ingredients) {
-                                    List<RegistryEntry<Item>> matchingItems = ingredient.getMatchingItems().collect(Collectors.toList());
+                                    List<Holder<Item>> matchingItems = ingredient.items().collect(Collectors.toList());
 
                                     if (matchingItems.isEmpty()) {
                                         entryString.append("<empty>");
                                     } else {
                                         List<String> itemNames = new ArrayList<>();
-                                        for (RegistryEntry<Item> entryItem : matchingItems) {
-                                            Identifier id = Registries.ITEM.getId(entryItem.value());
+                                        for (Holder<Item> entryItem : matchingItems) {
+                                            Identifier id = BuiltInRegistries.ITEM.getKey(entryItem.value());
                                             itemNames.add(id.toString());
                                         }
                                         entryString.append(String.join(", ", itemNames));
@@ -287,15 +280,15 @@ public class RecipeListScreen extends Screen {
 
     // Исправленный метод render с использованием DrawContext вместо MatrixStack
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
         // Рисуем текст или другие элементы на экране, если нужно
     }
 
     // Закрытие ExecutorService при выходе
     @Override
-    public void close() {
+    public void onClose() {
         executorService.shutdownNow();
-        super.close();
+        super.onClose();
     }
 }

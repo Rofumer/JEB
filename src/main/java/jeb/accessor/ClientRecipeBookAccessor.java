@@ -1,11 +1,9 @@
 package jeb.accessor;
 
-import net.minecraft.client.recipebook.ClientRecipeBook;
-import net.minecraft.recipe.NetworkRecipeId;
-import net.minecraft.recipe.RecipeDisplayEntry;
-
 import java.util.Map;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 
 public interface ClientRecipeBookAccessor {
-    Map<NetworkRecipeId, RecipeDisplayEntry> getRecipes();
+    Map<RecipeDisplayId, RecipeDisplayEntry> getRecipes();
 }

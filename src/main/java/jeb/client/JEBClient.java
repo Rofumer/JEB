@@ -3,33 +3,33 @@ package jeb.client;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.recipe.NetworkRecipeId;
-import net.minecraft.recipe.RecipeDisplayEntry;
-import net.minecraft.recipe.book.RecipeBookCategories;
-import net.minecraft.recipe.book.RecipeBookCategory;
-import net.minecraft.recipe.display.RecipeDisplay;
-import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
-import net.minecraft.recipe.display.SlotDisplay;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.registry.tag.TagKey;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeBookCategories;
+import net.minecraft.world.item.crafting.RecipeBookCategory;
+import net.minecraft.world.item.crafting.display.RecipeDisplay;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
+import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
 import org.lwjgl.glfw.GLFW;
 
 import java.io.FileReader;
@@ -42,14 +42,14 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static net.minecraft.client.resource.language.I18n.translate;
+import static net.minecraft.client.resources.language.I18n.get;
 
 public class JEBClient implements ClientModInitializer {
 
     public static boolean customToggleEnabled = true;
 
     private static final Path CONFIG_PATH = Paths.get(
-            MinecraftClient.getInstance().runDirectory.getAbsolutePath(),
+            Minecraft.getInstance().gameDirectory.getAbsolutePath(),
             "config", "JEB.json"
     );
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -58,24 +58,24 @@ public class JEBClient implements ClientModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("JEB");
 
 
-    private static KeyBinding keyBinding;
-    public static KeyBinding keyBinding2;
+    private static KeyMapping keyBinding;
+    public static KeyMapping keyBinding2;
 
     public static Set<Item> existingResultItems = new HashSet<>();
 
     public static Set<Item> nonexistingResultItems = new HashSet<>();
 
     public static String string = "-";
-    public static List<RecipeResultCollection> filtered = new ArrayList<>();
-    public static List<RecipeResultCollection> emptysearch = new ArrayList<>();
+    public static List<RecipeCollection> filtered = new ArrayList<>();
+    public static List<RecipeCollection> emptysearch = new ArrayList<>();
 
     public static boolean recipesLoaded = false;
 
-    public static List<RecipeResultCollection> PREGENERATED_RECIPES = generateCustomRecipeList("");
+    public static List<RecipeCollection> PREGENERATED_RECIPES = generateCustomRecipeList("");
 
-    public static List<RecipeResultCollection> generateCustomRecipeList(String filter) {
-        List<RecipeResultCollection> result = new ArrayList<>();
-        MinecraftClient client = MinecraftClient.getInstance();
+    public static List<RecipeCollection> generateCustomRecipeList(String filter) {
+        List<RecipeCollection> result = new ArrayList<>();
+        Minecraft client = Minecraft.getInstance();
 
         String query = "";
         String modName = null;
@@ -95,14 +95,14 @@ public class JEBClient implements ClientModInitializer {
             if (item == Items.AIR) continue;
 
             // Проверка на мод
-            if (modName != null && !modName.isEmpty() && !Registries.ITEM.getId(item).getNamespace().contains(modName.toLowerCase(Locale.ROOT))) {
+            if (modName != null && !modName.isEmpty() && !BuiltInRegistries.ITEM.getKey(item).getNamespace().contains(modName.toLowerCase(Locale.ROOT))) {
                 continue;
             }
 
             // Проверка совпадения по имени, id или ключу
             String name = item.getName().getString().toLowerCase(Locale.ROOT);
             String idString = item.toString().toLowerCase(Locale.ROOT);
-            String key = translate(item.getTranslationKey()).toLowerCase(Locale.ROOT);
+            String key = get(item.getDescriptionId()).toLowerCase(Locale.ROOT);
 
             boolean matches = query.isEmpty()
                     || name.contains(query)
@@ -110,14 +110,14 @@ public class JEBClient implements ClientModInitializer {
                     || key.contains(query);
 
             // Проверка по тултипам, если не нашли раньше
-            if (!matches && query.length() >= 3 && client.world != null) {
+            if (!matches && query.length() >= 3 && client.level != null) {
                 try {
-                    RegistryWrapper.WrapperLookup lookup = client.world.getRegistryManager();
-                    Item.TooltipContext tooltipContext = Item.TooltipContext.create(lookup);
-                    TooltipType tooltipType = TooltipType.Default.BASIC;
-                    List<Text> tooltip = item.getDefaultStack().getTooltip(tooltipContext, client.player, tooltipType);
-                    for (Text line : tooltip) {
-                        String clean = Formatting.strip(line.getString()).toLowerCase(Locale.ROOT).trim();
+                    HolderLookup.Provider lookup = client.level.registryAccess();
+                    Item.TooltipContext tooltipContext = Item.TooltipContext.of(lookup);
+                    TooltipFlag tooltipType = TooltipFlag.Default.NORMAL;
+                    List<Component> tooltip = item.getDefaultInstance().getTooltipLines(tooltipContext, client.player, tooltipType);
+                    for (Component line : tooltip) {
+                        String clean = ChatFormatting.stripFormatting(line.getString()).toLowerCase(Locale.ROOT).trim();
                         if (clean.contains(query)) {
                             matches = true;
                             break;
@@ -137,25 +137,25 @@ public class JEBClient implements ClientModInitializer {
     }
 
     // Выносим генерацию фейковой коллекции в отдельный метод для компактности:
-    private static RecipeResultCollection createDummyResultCollection(Item item) {
-        Identifier id = Registries.ITEM.getId(item);
-        NetworkRecipeId recipeId = new NetworkRecipeId(9999);
+    private static RecipeCollection createDummyResultCollection(Item item) {
+        Identifier id = BuiltInRegistries.ITEM.getKey(item);
+        RecipeDisplayId recipeId = new RecipeDisplayId(9999);
 
         List<SlotDisplay> slots = List.of(
-                new SlotDisplay.TagSlotDisplay(TagKey.of(RegistryKeys.ITEM, id))
+                new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, id))
         );
-        SlotDisplay.StackSlotDisplay resultSlot = new SlotDisplay.StackSlotDisplay(new ItemStack(item, 1));
+        SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStack(item, 1));
         SlotDisplay.ItemSlotDisplay stationSlot =
-                new SlotDisplay.ItemSlotDisplay(Registries.ITEM.get(Identifier.of("minecraft", "crafting_table")));
+                new SlotDisplay.ItemSlotDisplay(BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("minecraft", "crafting_table")));
 
-        List<Ingredient> ingredients = List.of(Ingredient.ofItems(item));
+        List<Ingredient> ingredients = List.of(Ingredient.of(item));
 
         RecipeDisplay display = new ShapelessCraftingRecipeDisplay(slots, resultSlot, stationSlot);
         OptionalInt group = OptionalInt.empty();
         RecipeBookCategory category = RecipeBookCategories.CRAFTING_MISC;
 
         RecipeDisplayEntry entry = new RecipeDisplayEntry(recipeId, display, group, category, Optional.of(ingredients));
-        return new RecipeResultCollection(List.of(entry));
+        return new RecipeCollection(List.of(entry));
     }
 
 
@@ -197,11 +197,11 @@ public class JEBClient implements ClientModInitializer {
     }
 
     // id категории
-    public static final Identifier JEB_CATEGORY_ID = Identifier.of("jeb", "key_category");
+    public static final Identifier JEB_CATEGORY_ID = Identifier.fromNamespaceAndPath("jeb", "key_category");
 
     // сама категория
-    private static final KeyBinding.Category JEB_CATEGORY =
-            KeyBinding.Category.create(JEB_CATEGORY_ID);
+    private static final KeyMapping.Category JEB_CATEGORY =
+            KeyMapping.Category.register(JEB_CATEGORY_ID);
 
     @Override
     public void onInitializeClient() {
@@ -209,16 +209,16 @@ public class JEBClient implements ClientModInitializer {
         loadConfig();
         Runtime.getRuntime().addShutdownHook(new Thread(JEBClient::saveConfig));
 
-        keyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        keyBinding = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.jeb.optional_recipes_loading_screen", // The translation key of the keybinding's name
-                InputUtil.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
+                InputConstants.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
                 GLFW.GLFW_KEY_APOSTROPHE, // The keycode of the key
                 JEB_CATEGORY // The translation key of the keybinding's category.
         ));
 
-        keyBinding2 = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        keyBinding2 = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.jeb.add_remove_favorite_recipes", // The translation key of the keybinding's name
-                InputUtil.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
+                InputConstants.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
                 GLFW.GLFW_KEY_A, // The keycode of the key
                 JEB_CATEGORY // The translation key of the keybinding's category.
         ));
@@ -306,7 +306,7 @@ public class JEBClient implements ClientModInitializer {
 
             }*/
 
-            while (keyBinding.wasPressed()) {
+            while (keyBinding.consumeClick()) {
 
                 client.setScreen(new RecipeListScreen());
 

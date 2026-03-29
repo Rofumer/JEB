@@ -1,10 +1,6 @@
 package jeb.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
-import net.minecraft.client.gui.screen.recipebook.RecipeAlternativesWidget;
-import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
-import net.minecraft.recipe.RecipeDisplayEntry;
-import net.minecraft.util.context.ContextParameterMap;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -14,19 +10,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.List;
+import net.minecraft.client.gui.screens.recipebook.OverlayRecipeComponent;
+import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
 //target = "Lnet/minecraft/client/gui/screen/recipebook/RecipeResultCollection;filter(Lnet/minecraft/client/gui/screen/recipebook/RecipeResultCollection$RecipeFilterMode;)Ljava/util/List;",
-@Mixin(RecipeAlternativesWidget.class)
+@Mixin(OverlayRecipeComponent.class)
 public class RecipeAlternativesWidgetMixin {
     @Redirect(
-            method = "showAlternativesForResult",
+            method = "init",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/screen/recipebook/RecipeResultCollection;filter(Lnet/minecraft/client/gui/screen/recipebook/RecipeResultCollection$RecipeFilterMode;)Ljava/util/List;",
+                    target = "Lnet/minecraft/client/gui/screens/recipebook/RecipeCollection;getSelectedRecipes(Lnet/minecraft/client/gui/screens/recipebook/RecipeCollection$CraftableStatus;)Ljava/util/List;",
                     ordinal = 1
             )
     )
-    private List<RecipeDisplayEntry> redirectList2Filter(RecipeResultCollection instance, RecipeResultCollection.RecipeFilterMode filterMode) {
-        return instance.getAllRecipes();
+    private List<RecipeDisplayEntry> redirectList2Filter(RecipeCollection instance, RecipeCollection.CraftableStatus filterMode) {
+        return instance.getRecipes();
     }
 
 }

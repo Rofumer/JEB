@@ -2,21 +2,6 @@ package jeb.mixin;
 
 import jeb.client.RecipeIndex;
 import jeb.client.RecipeLoader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.recipebook.RecipeResultCollection;
-import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.client.recipebook.ClientRecipeBook;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.network.packet.s2c.play.RecipeBookAddS2CPacket;
-import net.minecraft.network.packet.s2c.play.SynchronizeRecipesS2CPacket;
-import net.minecraft.recipe.RecipeDisplayEntry;
-import net.minecraft.recipe.book.RecipeBookCategory;
-import net.minecraft.recipe.display.SlotDisplay;
-import net.minecraft.recipe.display.SlotDisplayContexts;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.context.ContextParameterMap;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -24,7 +9,20 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 import net.minecraft.SharedConstants;
-
+import net.minecraft.client.ClientRecipeBook;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket;
+import net.minecraft.util.context.ContextMap;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.RecipeBookCategory;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import java.io.IOException;
 import java.util.*;
 
@@ -32,7 +30,7 @@ import static jeb.client.JEBClient.*;
 import static jeb.client.RecipeIndex.buildRecipeIndex;
 import static jeb.client.RecipeIndex.fillItemIndex;
 
-@Mixin(ClientPlayNetworkHandler.class)
+@Mixin(ClientPacketListener.class)
 public abstract class ClientPlayNetworkHandlerMixin {
 
     @Unique
@@ -61,24 +59,24 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
 
     @Inject(
-            method = "onRecipeBookAdd",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/recipebook/ClientRecipeBook;add(Lnet/minecraft/recipe/RecipeDisplayEntry;)V"),
+            method = "handleRecipeBookAdd",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/ClientRecipeBook;add(Lnet/minecraft/world/item/crafting/display/RecipeDisplayEntry;)V"),
             locals = LocalCapture.CAPTURE_FAILHARD
     )
-    private void injectOnRecipeBookAdd(RecipeBookAddS2CPacket packet, CallbackInfo ci, ClientRecipeBook clientRecipeBook, Iterator var3, RecipeBookAddS2CPacket.Entry entry) {
+    private void injectOnRecipeBookAdd(ClientboundRecipeBookAddPacket packet, CallbackInfo ci, ClientRecipeBook clientRecipeBook, Iterator var3, ClientboundRecipeBookAddPacket.Entry entry) {
 
-        ContextParameterMap context = SlotDisplayContexts.createParameters(
-                Objects.requireNonNull(MinecraftClient.getInstance().world)
+        ContextMap context = SlotDisplayContext.fromLevel(
+                Objects.requireNonNull(Minecraft.getInstance().level)
         );
 
         if (recipesLoaded) {
             long startTime = System.currentTimeMillis();
             RecipeBookCategory category = entry.contents().category();
-            LOGGER.info("[JEB] checking recipe {} started at {}", entry.contents().display().result().getFirst(context).toString() ,new Date(startTime));
+            LOGGER.info("[JEB] checking recipe {} started at {}", entry.contents().display().result().resolveForFirstStack(context).toString() ,new Date(startTime));
             // Проверяем по id (по новому методу!)
             if (!RecipeIndex.recipeIdExistsInIndex(category, entry.contents())) {
                 RecipeIndex.addAndIndexRecipeIfAbsent(category, entry.contents(), context);
-                LOGGER.info("[JEB] The recipe has been added: {}", entry.contents().display().result().getFirst(context).toString());
+                LOGGER.info("[JEB] The recipe has been added: {}", entry.contents().display().result().resolveForFirstStack(context).toString());
             }
 
 
@@ -92,12 +90,12 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
         SlotDisplay resultSlot = entry.contents().display().result();
 
-        List<ItemStack> stacks = resultSlot.getStacks(context);
+        List<ItemStack> stacks = resultSlot.resolveForStacks(context);
 
         ItemStack stack = stacks.get(0);
 
         // Добавляем в Set
-        if(entry.contents().display().craftingStation().getStacks(context).getFirst().getItem() == Items.CRAFTING_TABLE) {
+        if(entry.contents().display().craftingStation().resolveForStacks(context).getFirst().getItem() == Items.CRAFTING_TABLE) {
             existingResultItems.add(stack.getItem());
         }
 
@@ -107,12 +105,12 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
 
 
-        @Inject(method = "onRecipeBookAdd", at = @At("TAIL"))
-        private void afterRecipeBookAdd(RecipeBookAddS2CPacket packet, CallbackInfo ci) {
+        @Inject(method = "handleRecipeBookAdd", at = @At("TAIL"))
+        private void afterRecipeBookAdd(ClientboundRecipeBookAddPacket packet, CallbackInfo ci) {
 
             if(recipesLoaded) return;
 
-            String version = SharedConstants.getGameVersion().name(); // примерная функция
+            String version = SharedConstants.getCurrentVersion().name(); // примерная функция
             //String version = SharedConstants.getGameVersion().getName(); // примерная функция
 
             int vanillaMaxRecipes = VANILLA_RECIPE_COUNTS.getOrDefault(version, 1358);
@@ -120,7 +118,7 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
 
 
-            MinecraftClient client = MinecraftClient.getInstance();
+            Minecraft client = Minecraft.getInstance();
 
             int knownRecipeCount = 0;
 
@@ -130,12 +128,12 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
             //if (client.player != null) {
             recipeBook = client.player.getRecipeBook();
-            List<RecipeResultCollection> recipes = recipeBook.getOrderedResults();
+            List<RecipeCollection> recipes = recipeBook.getCollections();
 
 
             // Проходим по всем коллекциям рецептов
-            for (RecipeResultCollection collection : recipes) {
-                List<RecipeDisplayEntry> entries = collection.getAllRecipes();
+            for (RecipeCollection collection : recipes) {
+                List<RecipeDisplayEntry> entries = collection.getRecipes();
 
                 // Преобразуем в строку и выводим подробности для каждого рецепта
                 for (RecipeDisplayEntry entry : entries) {
@@ -143,11 +141,11 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
                     SlotDisplay resultSlot = entry.display().result();
 
-                    ContextParameterMap context = SlotDisplayContexts.createParameters(
-                            Objects.requireNonNull(client.world)
+                    ContextMap context = SlotDisplayContext.fromLevel(
+                            Objects.requireNonNull(client.level)
                     );
 
-                    List<ItemStack> stacks = resultSlot.getStacks(context);
+                    List<ItemStack> stacks = resultSlot.resolveForStacks(context);
 
 
                     ItemStack stack = stacks.getFirst();
@@ -185,7 +183,7 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
             if(recipesLoaded) {
                 nonexistingResultItems.clear();
-                for (Item item : Registries.ITEM) {
+                for (Item item : BuiltInRegistries.ITEM) {
                     if (item == Items.AIR) continue;
                     if (existingResultItems.contains(item)) continue;
                     nonexistingResultItems.add(item);
