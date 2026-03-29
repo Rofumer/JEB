@@ -6,7 +6,7 @@ import com.google.gson.JsonObject;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
@@ -18,10 +18,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.*;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeBookCategories;
 import net.minecraft.world.item.crafting.RecipeBookCategory;
@@ -100,7 +97,7 @@ public class JEBClient implements ClientModInitializer {
             }
 
             // Проверка совпадения по имени, id или ключу
-            String name = item.getName().getString().toLowerCase(Locale.ROOT);
+            String name = item.getDefaultInstance().getHoverName().getString().toLowerCase(Locale.ROOT);
             String idString = item.toString().toLowerCase(Locale.ROOT);
             String key = get(item.getDescriptionId()).toLowerCase(Locale.ROOT);
 
@@ -144,7 +141,7 @@ public class JEBClient implements ClientModInitializer {
         List<SlotDisplay> slots = List.of(
                 new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, id))
         );
-        SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStack(item, 1));
+        SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStackTemplate(item, 1));
         SlotDisplay.ItemSlotDisplay stationSlot =
                 new SlotDisplay.ItemSlotDisplay(BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("minecraft", "crafting_table")));
 
@@ -209,14 +206,14 @@ public class JEBClient implements ClientModInitializer {
         loadConfig();
         Runtime.getRuntime().addShutdownHook(new Thread(JEBClient::saveConfig));
 
-        keyBinding = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        keyBinding = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.jeb.optional_recipes_loading_screen", // The translation key of the keybinding's name
                 InputConstants.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
                 GLFW.GLFW_KEY_APOSTROPHE, // The keycode of the key
                 JEB_CATEGORY // The translation key of the keybinding's category.
         ));
 
-        keyBinding2 = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        keyBinding2 = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.jeb.add_remove_favorite_recipes", // The translation key of the keybinding's name
                 InputConstants.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
                 GLFW.GLFW_KEY_A, // The keycode of the key

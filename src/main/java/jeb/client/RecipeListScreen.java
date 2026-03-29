@@ -10,7 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+//import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
@@ -44,15 +44,19 @@ public class RecipeListScreen extends Screen {
 
         /// ---
         // Используем builder для создания кнопки
-        /*this.addDrawableChild(ButtonWidget.builder(Text.of("Show All Recipes"), button -> {
-                    try {
-                        showAllRecipes();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }).position(this.width / 2 - 100, this.height / 2 - 20)
+        /*this.addRenderableWidget(Button.builder(
+                        Component.literal("Show All Recipes"),
+                        button -> {
+                            try {
+                                showAllRecipes();
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
+                            }
+                        })
+                .pos(this.width / 2 - 100, this.height / 2 - 20)
                 .size(200, 20)
-                .build());*/
+                .build()
+        );*/
         /// ---
 
         this.addRenderableWidget(Button.builder(Component.nullToEmpty("Load All Recipes"), button -> {
@@ -60,7 +64,9 @@ public class RecipeListScreen extends Screen {
                         loadAllRecipes();
                         JEBClient.PREGENERATED_RECIPES = generateCustomRecipeList("");
                         minecraft.setScreen(null);
-                        minecraft.player.displayClientMessage(Component.literal("All recipes have been loaded"), false);
+                        minecraft.player.sendSystemMessage(
+                                Component.literal("All recipes have been loaded")
+                        );
 
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
@@ -279,11 +285,11 @@ public class RecipeListScreen extends Screen {
     }
 
     // Исправленный метод render с использованием DrawContext вместо MatrixStack
-    @Override
+    /*@Override
     public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
         // Рисуем текст или другие элементы на экране, если нужно
-    }
+    }*/
 
     // Закрытие ExecutorService при выходе
     @Override

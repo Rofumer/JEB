@@ -2,7 +2,7 @@ package jeb.mixin;
 
 import jeb.accessor.AnimatedResultButtonExtension;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.recipebook.RecipeButton;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
@@ -17,39 +17,20 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-
 
 @Mixin(RecipeButton.class)
 public class AnimatedResultButtonMixin implements AnimatedResultButtonExtension {
 
-
-    private static void drawBorderCompat(GuiGraphics ctx, int x, int y, int w, int h, int color) {
-        try {
-            GuiGraphics.class.getMethod("drawBorder", int.class,int.class,int.class,int.class,int.class)
-                    .invoke(ctx, x,y,w,h,color);
-        } catch (ReflectiveOperationException e1) {
-            try {
-                GuiGraphics.class.getMethod("renderOutline", int.class,int.class,int.class,int.class,int.class)
-                        .invoke(ctx, x,y,w,h,color);
-            } catch (ReflectiveOperationException e2) {
-                // Фоллбэк через fill — 1px рамка
-                ctx.fill(x, y, x + w, y + 1, color);
-                ctx.fill(x, y + h - 1, x + w, y + h, color);
-                ctx.fill(x, y, x + 1, y + h, color);
-                ctx.fill(x + w - 1, y, x + w, y + h, color);
-            }
-        }
-    }
-
+    @Unique
+    private long jeb$flashUntil = 0L;
 
     @Unique
-    private long jeb$flashUntil = 0L; // время до которого будет подсветка
-
-    @Unique
+    @Override
     public void jeb$flash() {
-        this.jeb$flashUntil = System.currentTimeMillis() + 300; // подсветка 300 мс
+        this.jeb$flashUntil = System.currentTimeMillis() + 300L;
     }
 
     @Unique
@@ -57,12 +38,62 @@ public class AnimatedResultButtonMixin implements AnimatedResultButtonExtension 
         return System.currentTimeMillis() < this.jeb$flashUntil;
     }
 
-    @Inject(method = "renderWidget", at = @At("TAIL"))
-    private void jeb$renderFlash(GuiGraphics context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        if (jeb$isFlashing()) {
-            RecipeButton self = (RecipeButton) (Object) this;
-            drawBorderCompat(context,self.getX(), self.getY(), self.getWidth(), self.getHeight(), 0xFFFFFF00); // Жёлтая рамка
+    @Unique
+    private static void jeb$drawBorderCompat(GuiGraphicsExtractor ctx, int x, int y, int w, int h, int color) {
+        try {
+            Method drawBorder = GuiGraphicsExtractor.class.getMethod(
+                    "drawBorder",
+                    int.class, int.class, int.class, int.class, int.class
+            );
+            drawBorder.invoke(ctx, x, y, w, h, color);
+            return;
+        } catch (ReflectiveOperationException ignored) {
         }
+
+        try {
+            Method renderOutline = GuiGraphicsExtractor.class.getMethod(
+                    "renderOutline",
+                    int.class, int.class, int.class, int.class, int.class
+            );
+            renderOutline.invoke(ctx, x, y, w, h, color);
+            return;
+        } catch (ReflectiveOperationException ignored) {
+        }
+
+        try {
+            Method fill = GuiGraphicsExtractor.class.getMethod(
+                    "fill",
+                    int.class, int.class, int.class, int.class, int.class
+            );
+
+            // верх
+            fill.invoke(ctx, x, y, x + w, y + 1, color);
+            // низ
+            fill.invoke(ctx, x, y + h - 1, x + w, y + h, color);
+            // лево
+            fill.invoke(ctx, x, y, x + 1, y + h, color);
+            // право
+            fill.invoke(ctx, x + w - 1, y, x + w, y + h, color);
+        } catch (ReflectiveOperationException ignored) {
+            // Если и этого нет — просто молча пропускаем подсветку.
+        }
+    }
+
+    @Inject(method = "extractWidgetRenderState", at = @At("TAIL"))
+    private void jeb$renderFlash(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        if (!jeb$isFlashing()) {
+            return;
+        }
+
+        RecipeButton self = (RecipeButton) (Object) this;
+        jeb$drawBorderCompat(
+                graphics,
+                self.getX(),
+                self.getY(),
+                self.getWidth(),
+                self.getHeight(),
+                0xFFFFFF00
+        );
     }
 
     @Redirect(
@@ -73,32 +104,17 @@ public class AnimatedResultButtonMixin implements AnimatedResultButtonExtension 
             )
     )
     private List<RecipeDisplayEntry> redirectFilter(RecipeCollection instance, RecipeCollection.CraftableStatus filterMode) {
-        // Возвращаем все рецепты, без фильтрации
         return instance.getRecipes();
     }
 
     @Unique
     private static final Component MORE_RECIPES_TEXT = Component.translatable("items.craftsfromitem");
 
-    /*@Inject(method = "getTooltip", at = @At("RETURN"), cancellable = true)
-    private void injectAlwaysAddTooltip(ItemStack stack, CallbackInfoReturnable<List<Text>> cir) {
-        List<Text> list = cir.getReturnValue();
-        try{
-        list.add(MORE_RECIPES_TEXT); // всегда добавляем
-        } catch (Exception e) {
-            e.printStackTrace();
-            // Можно также записать лог или безопасно проигнорировать ошибку
-        }
-        cir.setReturnValue(list);    // возвращаем изменённый список
-    }*/
-
     @Inject(method = "getTooltipText", at = @At("HEAD"), cancellable = true)
     private void onGetTooltip(ItemStack stack, CallbackInfoReturnable<List<Component>> cir) {
         try {
             List<Component> list = new ArrayList<>(Screen.getTooltipFromItem(Minecraft.getInstance(), stack));
-
             list.add(MORE_RECIPES_TEXT);
-
             cir.setReturnValue(list);
         } catch (Exception e) {
             e.printStackTrace();
@@ -106,5 +122,3 @@ public class AnimatedResultButtonMixin implements AnimatedResultButtonExtension 
         }
     }
 }
-
-

@@ -14,10 +14,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.context.ContextMap;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.*;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeBookCategories;
 import net.minecraft.world.item.crafting.RecipeBookCategory;
@@ -423,7 +420,7 @@ public class RecipeIndex {
         List<SlotDisplay> slots = List.of(
                 new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, id))
         );
-        SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStack(item, 1));
+        SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStackTemplate(item, 1));
         SlotDisplay.ItemSlotDisplay stationSlot =
                 new SlotDisplay.ItemSlotDisplay(BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("minecraft", "crafting_table")));
 
@@ -465,7 +462,7 @@ public class RecipeIndex {
         for (Item item : nonexistingResultItems) {
             if (item == Items.AIR) continue;
             String id = item.toString().toLowerCase(Locale.ROOT);
-            String name = item.getName().getString().toLowerCase(Locale.ROOT);
+            String name = item.getDefaultInstance().getHoverName().getString().toLowerCase(Locale.ROOT);
             String mod = BuiltInRegistries.ITEM.getKey(item).getNamespace().toLowerCase(Locale.ROOT);
             String key = get(item.getDescriptionId()).toLowerCase(Locale.ROOT);
             List<String> tooltipLines = new ArrayList<>(List.of());

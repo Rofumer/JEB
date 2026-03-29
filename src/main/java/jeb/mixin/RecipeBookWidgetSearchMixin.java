@@ -9,7 +9,8 @@ import jeb.client.RecipeIndex;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+//import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
@@ -39,6 +40,7 @@ import net.minecraft.world.inventory.AbstractCraftingMenu;
 import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeBookCategories;
@@ -150,17 +152,17 @@ public abstract class RecipeBookWidgetSearchMixin<T extends RecipeBookMenu> impl
     }
 
     @Inject(
-            method = "render",
+            method = "extractRenderState",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/components/CycleButton;render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V",
+                    target = "Lnet/minecraft/client/gui/components/CycleButton;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V",
                     ordinal = 0,
                     shift = At.Shift.AFTER
             )
     )
-    private void jeb$renderCustomToggle(GuiGraphics context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    private void jeb$renderCustomToggle(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (jeb$customToggleButton != null && jeb$customToggleButton.visible) {
-            jeb$customToggleButton.render(context, mouseX, mouseY, delta);
+            jeb$customToggleButton.extractRenderState(graphics, mouseX, mouseY, delta);
         }
     }
 
@@ -240,7 +242,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends RecipeBookMenu> impl
         return entry.craftingRequirements().get().stream().anyMatch(ingredient ->
                 ingredient.items().anyMatch(regEntry -> {
                     ItemStack stack = new ItemStack(regEntry.value());
-                    String itemName = stack.getItem().getName().getString().toLowerCase(Locale.ROOT);
+                    String itemName = stack.getItem().getName(stack).getString().toLowerCase(Locale.ROOT);
                     return itemName.contains(query);
                 })
         );
@@ -300,9 +302,22 @@ public abstract class RecipeBookWidgetSearchMixin<T extends RecipeBookMenu> impl
         List<SlotDisplay> slots = List.of(
                 new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, id))
         );
-        SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(stack.copy());
+
+        SlotDisplay.ItemStackSlotDisplay resultSlot =
+                new SlotDisplay.ItemStackSlotDisplay(
+                        new ItemStackTemplate(
+                                stack.typeHolder(),
+                                stack.getCount(),
+                                stack.getComponentsPatch()
+                        )
+                );
+
         SlotDisplay.ItemSlotDisplay stationSlot =
-                new SlotDisplay.ItemSlotDisplay(BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("minecraft", "crafting_table")));
+                new SlotDisplay.ItemSlotDisplay(
+                        BuiltInRegistries.ITEM.getValue(
+                                Identifier.fromNamespaceAndPath("minecraft", "crafting_table")
+                        )
+                );
 
         RecipeDisplay display = new ShapelessCraftingRecipeDisplay(slots, resultSlot, stationSlot);
         OptionalInt group = OptionalInt.empty();
@@ -478,10 +493,10 @@ public abstract class RecipeBookWidgetSearchMixin<T extends RecipeBookMenu> impl
         }
     }
 
-    @Unique
+    /*@Unique
     private static Optional<Item> getItemFromSlotDisplay(SlotDisplay slot) {
         if (slot instanceof SlotDisplay.ItemStackSlotDisplay stackSlot) {
-            ItemStack stack = stackSlot.stack();
+            ItemStackTemplate stack = stackSlot.stack();
             return Optional.of(stack.getItem());
         }
 
@@ -506,5 +521,5 @@ public abstract class RecipeBookWidgetSearchMixin<T extends RecipeBookMenu> impl
         }
 
         return Optional.empty();
-    }
+    }*/
 }

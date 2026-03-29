@@ -14,6 +14,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeBookCategories;
@@ -98,7 +99,7 @@ public abstract class RecipeBookWidgetMixin {
             List<SlotDisplay> slots = new ArrayList<>();
             slots.add(new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("minecraft", id.getPath()))));
 
-            SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStack(item, 1));
+            SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStackTemplate(item, 1));
 
             SlotDisplay.ItemSlotDisplay stationSlot = new SlotDisplay.ItemSlotDisplay(
                     BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("minecraft", "crafting_table"))
@@ -123,7 +124,7 @@ public abstract class RecipeBookWidgetMixin {
 
                 Identifier id = BuiltInRegistries.ITEM.getKey(item);
                 String idString = id.toString().toLowerCase(); // без Locale
-                String name = item.getName().getString().toLowerCase(); // без Locale
+                String name = item.getDefaultInstance().getHoverName().getString().toLowerCase(); // без Locale
                 String searchLower = searchText.toLowerCase(); // без Locale
 
                 // Если id или имя содержит текст поиска
@@ -135,7 +136,7 @@ public abstract class RecipeBookWidgetMixin {
                         new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, id))
                 );
 
-                SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStack(item));
+                SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStackTemplate(item));
                 SlotDisplay.ItemSlotDisplay stationSlot = new SlotDisplay.ItemSlotDisplay(Items.CRAFTING_TABLE);
 
                 ShapelessCraftingRecipeDisplay display = new ShapelessCraftingRecipeDisplay(slots, resultSlot, stationSlot);
@@ -160,8 +161,8 @@ public abstract class RecipeBookWidgetMixin {
 
     @Unique
     private static Optional<Item> getItemFromSlotDisplay(SlotDisplay slot) {
-        if (slot instanceof SlotDisplay.ItemStackSlotDisplay(ItemStack stack)) {
-            return Optional.of(stack.getItem());
+        if (slot instanceof SlotDisplay.ItemStackSlotDisplay(ItemStackTemplate stack)) {
+            return Optional.of(stack.item().value());
         }
 
         if (slot instanceof SlotDisplay.ItemSlotDisplay(Holder<Item> item)) {

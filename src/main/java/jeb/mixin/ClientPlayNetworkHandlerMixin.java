@@ -42,7 +42,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
             "1.21.8", 1395,
             "1.21.9", 1449,
             "1.21.10", 1449,
-            "1.21.11", 1459
+            "1.21.11", 1459,
+            "26.1", 1498
     );
 
     @Unique
@@ -54,7 +55,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
             "1.21.8", 262,
             "1.21.9", 283,
             "1.21.10", 283,
-            "1.21.11", 284
+            "1.21.11", 284,
+            "26.1", 293
     );
 
 
