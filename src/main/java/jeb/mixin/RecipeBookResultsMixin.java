@@ -4,7 +4,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import jeb.accessor.ClientRecipeBookAccessor;
 import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screen.recipebook.*;
+//import net.minecraft.client.gui.screen.recipebook.*;
 import net.minecraft.client.gui.screens.recipebook.OverlayRecipeComponent;
 import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
 import net.minecraft.client.gui.screens.recipebook.RecipeBookPage;
