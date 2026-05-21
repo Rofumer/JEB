@@ -27,9 +27,6 @@
   </tbody>
 </table>
 
-<!--[![Get a Minecraft server from CraftLands Hosting](https://cdn.modrinth.com/data/cached_images/cc96e32af8107a21b8b2e5391c46eb0aff8cc9c1.png)](https://portal.craftlands.host/aff.php?aff=107)-->
-[![Get a Minecraft server from KCB Hosting - Premium Game Server Hosting](https://cdn.modrinth.com/data/cached_images/f4a876456d8eb5502b8e020d0519c39d7a0c4e9a_0.webp)](https://kcbhosting.com/aff/MAXBEL)
-
 This mod slightly improves the standard Minecraft recipe book. It’s a lightweight alternative to mods like JEI (Just Enough Items).
 
 The new mod by Max Bel.
