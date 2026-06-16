@@ -35,29 +35,6 @@ import static jeb.client.RecipeIndex.fillItemIndex;
 @Mixin(ClientPlayNetworkHandler.class)
 public abstract class ClientPlayNetworkHandlerMixin {
 
-    @Unique
-    private static final Map<String, Integer> VANILLA_RECIPE_COUNTS = Map.of(
-            "1.21.4", 1358,
-            "1.21.5", 1361,
-            "1.21.6", 1395,
-            "1.21.7", 1395,
-            "1.21.8", 1395,
-            "1.21.9", 1449,
-            "1.21.10", 1449,
-            "1.21.11", 1459
-    );
-
-    @Unique
-    private static final Map<String, Integer> VANILLA_CT_ID = Map.of(
-            "1.21.4", 259,
-            "1.21.5", 259,
-            "1.21.6", 262,
-            "1.21.7", 262,
-            "1.21.8", 262,
-            "1.21.9", 283,
-            "1.21.10", 283,
-            "1.21.11", 284
-    );
 
 
     @Inject(
@@ -112,11 +89,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
             if(recipesLoaded) return;
 
-            String version = SharedConstants.getGameVersion().name(); // примерная функция
-            //String version = SharedConstants.getGameVersion().getName(); // примерная функция
-
-            int vanillaMaxRecipes = VANILLA_RECIPE_COUNTS.getOrDefault(version, 1358);
-            int vanillaCTID = VANILLA_CT_ID.getOrDefault(version, 259);
+            int vanillaMaxRecipes = RecipeLoader.getVanillaRecipeCount();
+            int vanillaCTID = RecipeLoader.getVanillaCTID();
 
 
 
