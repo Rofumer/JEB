@@ -8,7 +8,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
-import net.minecraft.SharedConstants;
 import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
@@ -33,39 +32,6 @@ import static jeb.client.RecipeIndex.fillItemIndex;
 @Mixin(ClientPacketListener.class)
 public abstract class ClientPlayNetworkHandlerMixin {
 
-    @Unique
-    private static final Map<String, Integer> VANILLA_RECIPE_COUNTS = new java.util.HashMap<>(Map.of(
-            "1.21.4", 1358,
-            "1.21.5", 1361,
-            "1.21.6", 1395,
-            "1.21.7", 1395,
-            "1.21.8", 1395,
-            "1.21.9", 1449,
-            "1.21.10", 1449,
-            "1.21.11", 1459,
-            "26.1", 1498
-    )) {{
-        put("26.1.1", 1498);
-        put("26.1.2", 1498);
-        put("26.2", 1568);
-    }};
-
-    @Unique
-    private static final Map<String, Integer> VANILLA_CT_ID = new java.util.HashMap<>(Map.of(
-            "1.21.4", 259,
-            "1.21.5", 259,
-            "1.21.6", 262,
-            "1.21.7", 262,
-            "1.21.8", 262,
-            "1.21.9", 283,
-            "1.21.10", 283,
-            "1.21.11", 284,
-            "26.1", 293
-    )) {{
-        put("26.1.1", 293);
-        put("26.1.2", 293);
-        put("26.2", 318);
-    }};
 
 
     @Inject(
@@ -120,11 +86,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
             if(recipesLoaded) return;
 
-            String version = SharedConstants.getCurrentVersion().name(); // примерная функция
-            //String version = SharedConstants.getGameVersion().getName(); // примерная функция
-
-            int vanillaMaxRecipes = VANILLA_RECIPE_COUNTS.getOrDefault(version, 1358);
-            int vanillaCTID = VANILLA_CT_ID.getOrDefault(version, 259);
+            int vanillaMaxRecipes = RecipeLoader.getVanillaRecipeCount();
+            int vanillaCTID = RecipeLoader.getVanillaCTID();
 
 
 
