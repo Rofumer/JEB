@@ -51,6 +51,51 @@ import static jeb.client.JEBClient.existingResultItems;
 
 public class RecipeLoader {
 
+    private static int cachedVanillaRecipeCount = -1;
+    private static int cachedVanillaCTID = -1;
+
+    private static final Pattern CT_RESULT_PATTERN = Pattern.compile(
+        "result=ItemStackSlotDisplay\\[stack=ItemStackTemplate\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:crafting_table\\]" +
+        ".*?NetworkID:RecipeDisplayId\\[index=(\\d+)\\]"
+    );
+
+    private static void loadVanillaStats() {
+        String name = "recipes_" + SharedConstants.getCurrentVersion().name() + ".txt";
+        try (InputStream input = RecipeLoader.class.getClassLoader().getResourceAsStream(name)) {
+            if (input == null) {
+                cachedVanillaRecipeCount = 1358;
+                cachedVanillaCTID = 259;
+                return;
+            }
+            int count = 0;
+            int ctId = -1;
+            BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                count++;
+                if (ctId == -1) {
+                    Matcher m = CT_RESULT_PATTERN.matcher(line);
+                    if (m.find()) ctId = Integer.parseInt(m.group(1));
+                }
+            }
+            cachedVanillaRecipeCount = count;
+            cachedVanillaCTID = ctId != -1 ? ctId : 259;
+        } catch (Exception e) {
+            cachedVanillaRecipeCount = 1358;
+            cachedVanillaCTID = 259;
+        }
+    }
+
+    public static int getVanillaRecipeCount() {
+        if (cachedVanillaRecipeCount == -1) loadVanillaStats();
+        return cachedVanillaRecipeCount;
+    }
+
+    public static int getVanillaCTID() {
+        if (cachedVanillaCTID == -1) loadVanillaStats();
+        return cachedVanillaCTID;
+    }
+
     private static class ParsedStackResult {
         final String itemId;
         final int count;
