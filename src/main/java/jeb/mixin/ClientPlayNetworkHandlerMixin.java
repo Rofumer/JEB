@@ -34,7 +34,7 @@ import static jeb.client.RecipeIndex.fillItemIndex;
 public abstract class ClientPlayNetworkHandlerMixin {
 
     @Unique
-    private static final Map<String, Integer> VANILLA_RECIPE_COUNTS = Map.of(
+    private static final Map<String, Integer> VANILLA_RECIPE_COUNTS = new java.util.HashMap<>(Map.of(
             "1.21.4", 1358,
             "1.21.5", 1361,
             "1.21.6", 1395,
@@ -44,10 +44,14 @@ public abstract class ClientPlayNetworkHandlerMixin {
             "1.21.10", 1449,
             "1.21.11", 1459,
             "26.1", 1498
-    );
+    )) {{
+        put("26.1.1", 1498);
+        put("26.1.2", 1498);
+        put("26.2", 1568);
+    }};
 
     @Unique
-    private static final Map<String, Integer> VANILLA_CT_ID = Map.of(
+    private static final Map<String, Integer> VANILLA_CT_ID = new java.util.HashMap<>(Map.of(
             "1.21.4", 259,
             "1.21.5", 259,
             "1.21.6", 262,
@@ -57,7 +61,11 @@ public abstract class ClientPlayNetworkHandlerMixin {
             "1.21.10", 283,
             "1.21.11", 284,
             "26.1", 293
-    );
+    )) {{
+        put("26.1.1", 293);
+        put("26.1.2", 293);
+        put("26.2", 318);
+    }};
 
 
     @Inject(

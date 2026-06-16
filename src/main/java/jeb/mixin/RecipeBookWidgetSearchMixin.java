@@ -225,7 +225,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends RecipeBookMenu> impl
                 ((ClientRecipeBookAccessor) recipeBook).getRecipes();
 
         RecipeDisplayEntry entry = recipes.get(recipeId);
-        Screen screen = client.screen;
+        Screen screen = client.gui.screen();
 
         if (screen instanceof RecipeUpdateListener provider && entry != null) {
             if (!results.isCraftable(recipeId) && recipeId.index() != 9999) {
@@ -463,7 +463,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends RecipeBookMenu> impl
             filtered = RecipeIndex.generateCustomRecipeList(rawInput);
         }
 
-        Screen screen = minecraft.screen;
+        Screen screen = minecraft.gui.screen();
 
         if (!filterButton.getValue()) {
             filteredList.addAll(filtered);

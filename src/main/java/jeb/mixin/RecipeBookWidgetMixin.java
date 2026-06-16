@@ -51,7 +51,7 @@ public abstract class RecipeBookWidgetMixin {
 
         RecipeDisplayEntry entry = recipes.get(recipeId);
 
-        Screen screen = client.screen;
+        Screen screen = client.gui.screen();
         if (screen instanceof RecipeUpdateListener provider && entry != null) {
             provider.fillGhostRecipe(entry.display());
         }

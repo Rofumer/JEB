@@ -305,7 +305,7 @@ public class JEBClient implements ClientModInitializer {
 
             while (keyBinding.consumeClick()) {
 
-                client.setScreen(new RecipeListScreen());
+                client.gui.setScreen(new RecipeListScreen());
 
                 /*RecipeListScreen recipeListScreen = new RecipeListScreen();
 

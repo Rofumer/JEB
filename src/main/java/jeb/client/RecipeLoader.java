@@ -881,7 +881,7 @@ public class RecipeLoader {
             clientRecipeBook.rebuildCollections();
             handler.searchTrees().updateRecipes(clientRecipeBook, world);
 
-            Screen screen = client.screen;
+            Screen screen = client.gui.screen();
             if (screen instanceof RecipeUpdateListener recipeBookProvider) {
                 recipeBookProvider.recipesUpdated();
             }

@@ -63,7 +63,7 @@ public class RecipeListScreen extends Screen {
                     try {
                         loadAllRecipes();
                         JEBClient.PREGENERATED_RECIPES = generateCustomRecipeList("");
-                        minecraft.setScreen(null);
+                        minecraft.gui.setScreen(null);
                         minecraft.player.sendSystemMessage(
                                 Component.literal("All recipes have been loaded")
                         );
@@ -72,6 +72,19 @@ public class RecipeListScreen extends Screen {
                         throw new RuntimeException(e);
                     }
                 }).pos(this.width / 2 - 100, this.height / 2 - 40)
+                .size(200, 20)
+                .build());
+
+        this.addRenderableWidget(Button.builder(Component.nullToEmpty("Dump Recipes to File"), button -> {
+                    try {
+                        showAllRecipes();
+                        minecraft.player.sendSystemMessage(
+                                Component.literal("Recipes dumped to recipes_output.txt")
+                        );
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }).pos(this.width / 2 - 100, this.height / 2 - 15)
                 .size(200, 20)
                 .build());
     }
