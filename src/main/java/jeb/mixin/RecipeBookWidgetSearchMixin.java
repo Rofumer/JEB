@@ -6,6 +6,7 @@ import jeb.accessor.RecipeBookWidgetBridge;
 import jeb.client.FavoritesManager;
 import jeb.client.JEBClient;
 import jeb.client.RecipeIndex;
+import jeb.client.SearchHistoryEntry;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ButtonTextures;
@@ -14,6 +15,7 @@ import net.minecraft.client.gui.screen.ingame.CraftingScreen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.screen.recipebook.*;
 import net.minecraft.client.gui.tooltip.Tooltip;
+import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.CyclingButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.input.KeyInput;
@@ -110,6 +112,63 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     private boolean jeb$customToggleState = false;
 
     @Unique
+    private static final int JEB_HISTORY_LIMIT = 30;
+
+    @Unique
+    private ButtonWidget jeb$backButton;
+
+    // true после первого reset() этого экземпляра — не даёт повторно
+    // затирать текст поиска при каждом reset() в рамках одной сессии.
+    @Unique
+    private boolean jeb$searchRestored = false;
+
+    // Стек истории хранится в JEBClient (по RecipeBookType), а не в @Unique-поле
+    // этого миксина, чтобы переживать закрытие/переоткрытие экрана крафта —
+    // по той же причине, что и восстановление текста поиска.
+    @Unique
+    private Deque<SearchHistoryEntry> jeb$history() {
+        return JEBClient.searchHistoryByType.computeIfAbsent(craftingScreenHandler.getCategory(), k -> new ArrayDeque<>());
+    }
+
+    @Override
+    public void jeb$pushHistory(String query, RecipeGroupButtonWidget tab) {
+        RecipeBookGroup category = tab != null ? tab.getCategory() : null;
+        Deque<SearchHistoryEntry> history = jeb$history();
+        SearchHistoryEntry top = history.peekLast();
+        if (top != null && top.query().equals(query) && Objects.equals(top.category(), category)) return;
+
+        history.addLast(new SearchHistoryEntry(query, category));
+        if (history.size() > JEB_HISTORY_LIMIT) {
+            history.removeFirst();
+        }
+    }
+
+    @Override
+    public boolean jeb$goBack() {
+        SearchHistoryEntry entry = jeb$history().pollLast();
+        if (entry == null) return false;
+
+        searchField.setText(entry.query());
+        if (entry.category() != null) {
+            // Кнопки вкладок пересоздаются при каждом reset(), поэтому
+            // сохранённую вкладку ищем заново по категории, а не по ссылке на объект.
+            for (RecipeGroupButtonWidget candidate : tabButtons) {
+                if (candidate.getCategory().equals(entry.category())) {
+                    currentTab = candidate;
+                    break;
+                }
+            }
+        }
+        ((RecipeBookWidgetAccessor) (Object) this).invokeReset();
+        return true;
+    }
+
+    @Override
+    public boolean jeb$hasHistory() {
+        return !jeb$history().isEmpty();
+    }
+
+    @Unique
     private static final ButtonTextures TEXTURES_ALT = new ButtonTextures(
             Identifier.ofVanilla("recipe_book/crafting_overlay"),
             Identifier.ofVanilla("recipe_book/crafting_overlay_highlighted")
@@ -122,6 +181,22 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     );
 
     // ===== кастомная кнопка (CyclingButtonWidget) =====
+
+    // Подменяем текст поиска ровно в момент reset(): ванильный код тут же
+    // (в конце того же метода) сам вызывает refreshResults() на ещё пустом
+    // searchField, поэтому восстанавливать текст нужно ДО этого вызова, а не
+    // после него в отдельном @Inject(at = TAIL) — иначе onCustomSearch успевает
+    // затереть сохранённый запрос пустой строкой раньше, чем мы его восстановим.
+    @Inject(method = "reset", at = @At("HEAD"))
+    private void jeb$restoreSearchOnFirstInit(CallbackInfo ci) {
+        if (!jeb$searchRestored) {
+            jeb$searchRestored = true;
+            String saved = JEBClient.lastSearchByType.get(craftingScreenHandler.getCategory());
+            if (saved != null && !saved.isEmpty()) {
+                searchField.setText(saved);
+            }
+        }
+    }
 
     @Inject(method = "reset", at = @At("TAIL"))
     private void jeb$addCustomToggleButton(CallbackInfo ci) {
@@ -145,6 +220,12 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
                 });
 
         jeb$customToggleButton.visible = true;
+
+        jeb$backButton = ButtonWidget.builder(Text.of("<"), button -> this.jeb$goBack())
+                .tooltip(Tooltip.of(Text.translatable("jeb.recipe_book.back")))
+                .position(x + 22, y)
+                .size(16, 16)
+                .build();
     }
 
     @Inject(
@@ -160,6 +241,13 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
         if (jeb$customToggleButton != null && jeb$customToggleButton.visible) {
             jeb$customToggleButton.render(context, mouseX, mouseY, delta);
         }
+
+        if (jeb$backButton != null) {
+            jeb$backButton.visible = jeb$hasHistory();
+            if (jeb$backButton.visible) {
+                jeb$backButton.render(context, mouseX, mouseY, delta);
+            }
+        }
     }
 
     @Inject(method = "populateAllRecipes", at = @At("HEAD"), cancellable = true)
@@ -171,6 +259,11 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     private void jeb$clickCustomToggle(Click click, boolean doubled, CallbackInfoReturnable<Boolean> cir) {
         if (jeb$customToggleButton != null && jeb$customToggleButton.mouseClicked(click, doubled)) {
             // всё уже обработано в callback у builder
+            cir.setReturnValue(true);
+        }
+
+        if (jeb$backButton != null && jeb$backButton.visible && jeb$backButton.mouseClicked(click, doubled)) {
+            // jeb$goBack() уже вызван в callback у builder
             cir.setReturnValue(true);
         }
     }
@@ -320,6 +413,8 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
     @Inject(method = "refreshResults", at = @At("HEAD"), cancellable = true)
     private void onCustomSearch(boolean resetCurrentPage, boolean filteringCraftable, CallbackInfo ci) {
         String rawInput = searchField.getText();
+
+        JEBClient.lastSearchByType.put(craftingScreenHandler.getCategory(), rawInput);
 
         boolean searchIngredients = rawInput.startsWith("#");
         boolean searchByResult = rawInput.startsWith("~");
