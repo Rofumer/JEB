@@ -27,6 +27,7 @@ import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.SlotDisplay;
+import net.minecraft.world.inventory.RecipeBookType;
 import org.lwjgl.glfw.GLFW;
 
 import java.io.FileReader;
@@ -44,6 +45,15 @@ import static net.minecraft.client.resources.language.I18n.get;
 public class JEBClient implements ClientModInitializer {
 
     public static boolean customToggleEnabled = true;
+
+    // Последний текст поиска по каждому типу книги рецептов (верстак/печь/...).
+    // Живёт только в памяти клиента — переживает закрытие/переоткрытие экрана,
+    // но не переживает перезапуск игры.
+    public static final Map<RecipeBookType, String> lastSearchByType = new HashMap<>();
+
+    // Стек предыдущих поисковых запросов (кнопка "назад") по каждому типу книги
+    // рецептов — по той же причине хранится тут, а не в самом компоненте.
+    public static final Map<RecipeBookType, Deque<SearchHistoryEntry>> searchHistoryByType = new HashMap<>();
 
     private static final Path CONFIG_PATH = Paths.get(
             Minecraft.getInstance().gameDirectory.getAbsolutePath(),
