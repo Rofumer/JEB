@@ -57,6 +57,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -182,20 +183,22 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
     // ===== кастомная кнопка (CyclingButtonWidget) =====
 
-    // Подменяем текст поиска ровно в момент reset(): ванильный код тут же
-    // (в конце того же метода) сам вызывает refreshResults() на ещё пустом
-    // searchField, поэтому восстанавливать текст нужно ДО этого вызова, а не
-    // после него в отдельном @Inject(at = TAIL) — иначе onCustomSearch успевает
-    // затереть сохранённый запрос пустой строкой раньше, чем мы его восстановим.
-    @Inject(method = "reset", at = @At("HEAD"))
-    private void jeb$restoreSearchOnFirstInit(CallbackInfo ci) {
+    // Подменяем локальную переменную с исходным текстом поиска ровно в момент
+    // её вычисления в reset() (var = searchField != null ? searchField.getText() : "").
+    // На первом reset() нового экземпляра виджета searchField ещё null, поэтому
+    // читать/писать само поле здесь нельзя — а вот заменить эту локальную
+    // переменную безопасно: ванильный код сам подставит её в конструктор
+    // TextFieldWidget, и refreshResults() в конце метода увидит уже правильный текст.
+    @ModifyVariable(method = "reset", at = @At("STORE"), ordinal = 0)
+    private String jeb$restoreSearchOnFirstInit(String oldText) {
         if (!jeb$searchRestored) {
             jeb$searchRestored = true;
             String saved = JEBClient.lastSearchByType.get(craftingScreenHandler.getCategory());
             if (saved != null && !saved.isEmpty()) {
-                searchField.setText(saved);
+                return saved;
             }
         }
+        return oldText;
     }
 
     @Inject(method = "reset", at = @At("TAIL"))

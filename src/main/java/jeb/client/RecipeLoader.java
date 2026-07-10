@@ -46,7 +46,7 @@ public class RecipeLoader {
     );
 
     private static void loadVanillaStats() {
-        String name = "recipes_" + SharedConstants.getCurrentVersion().name() + ".txt";
+        String name = "recipes_" + SharedConstants.getGameVersion().name() + ".txt";
         try (InputStream input = RecipeLoader.class.getClassLoader().getResourceAsStream(name)) {
             if (input == null) {
                 cachedVanillaRecipeCount = 1358;
