@@ -3,5 +3,7 @@
   "key.category.jeb.key_category": "JEB (Just Enough Book)",
   "key.jeb.optional_recipes_loading_screen": "Optional Recipes Loading Screen",
   "key.jeb.add_remove_favorite_recipes": "Add/Remove Favorite Recipe",
+  "key.jeb.view_recipe": "View Recipe (hovered item)",
+  "key.jeb.view_uses": "View Uses (hovered item)",
   "jeb.recipe_book.back": "Back to previous search"
 }
