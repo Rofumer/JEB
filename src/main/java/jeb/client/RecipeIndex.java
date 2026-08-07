@@ -109,7 +109,7 @@ public class RecipeIndex {
 
                     // Индекс по подстрокам результата (id и имя)
                     String resultId = Registries.ITEM.getId(result.getItem()).toString().toLowerCase(Locale.ROOT);
-                    String name = result.getItemName().getString().toLowerCase(Locale.ROOT).replaceAll("[\\[\\]«»\"]", "");
+                    String name = result.getHoverName().getString().toLowerCase(Locale.ROOT).replaceAll("[\\[\\]«»\"]", "");
                     for (String source : List.of(resultId, name)) {
                         for (int i = 0; i < source.length(); i++) {
                             for (int j = i + 1; j <= source.length(); j++) {
@@ -141,10 +141,15 @@ public class RecipeIndex {
     public final Map<RecipeBookCategory, Map<String, List<RecipeCollection>>> byIngredientWord = new HashMap<>();
     public final Map<RecipeBookCategory, Map<String, List<RecipeCollection>>> byTooltipWord = new HashMap<>();
     public final Map<RecipeBookCategory, Set<RecipeCollection>> allCollections = new HashMap<>();
-    public static final Map<RecipeBookCategory, Map<Item, RecipeCollection>> GLOBAL_COLLECTIONS_BY_RESULT = new HashMap<>();
+    public static final Map<RecipeBookCategory, Map<String, RecipeCollection>> GLOBAL_COLLECTIONS_BY_RESULT = new HashMap<>();
 
     public static final RecipeIndex GLOBAL_RECIPE_INDEX = new RecipeIndex();
     public static boolean jebIndexReady = false;
+
+    private static String resultKey(Item item, ItemStack resolvedResult) {
+        String signature = resolvedResult.getHoverName().getString().toLowerCase(Locale.ROOT).trim();
+        return BuiltInRegistries.ITEM.getKey(item) + "|" + signature;
+    }
 
     // === Индексация ===
     public static void buildRecipeIndex() {
@@ -180,7 +185,7 @@ public class RecipeIndex {
             List<RecipeCollection> collections = book.getCollection(category);
             if (collections.isEmpty()) continue;
 
-            Map<Item, RecipeCollection> collectionsByResult = GLOBAL_COLLECTIONS_BY_RESULT.computeIfAbsent(category, k -> new HashMap<>());
+            Map<String, RecipeCollection> collectionsByResult = GLOBAL_COLLECTIONS_BY_RESULT.computeIfAbsent(category, k -> new HashMap<>());
             Set<RecipeCollection> categoryCollections = new LinkedHashSet<>();
 
             Map<String, List<RecipeCollection>> resultIndex = new HashMap<>();
@@ -196,12 +201,13 @@ public class RecipeIndex {
                     ItemStack result = recipe.display().result().resolveForFirstStack(context);
                     if (result == null || result.isEmpty()) continue;
                     Item resultItem = result.getItem();
+                    String resultKey = resultKey(resultItem, result);
 
                     // Коллекция по результату
-                    RecipeCollection realCollection = collectionsByResult.get(resultItem);
+                    RecipeCollection realCollection = collectionsByResult.get(resultKey);
                     if (realCollection == null) {
                         realCollection = new RecipeCollection(new ArrayList<>());
-                        collectionsByResult.put(resultItem, realCollection);
+                        collectionsByResult.put(resultKey, realCollection);
                         categoryCollections.add(realCollection);
                     }
                     if (!realCollection.getRecipes().contains(recipe)) {
@@ -231,7 +237,7 @@ public class RecipeIndex {
 
                     // Индекс по подстрокам результата (id и имя)
                     String resultId = BuiltInRegistries.ITEM.getKey(resultItem).toString().toLowerCase(Locale.ROOT);
-                    String name = result.getItemName().getString().toLowerCase(Locale.ROOT).replaceAll("[\\[\\]«»\"]", "");
+                    String name = result.getHoverName().getString().toLowerCase(Locale.ROOT).replaceAll("[\\[\\]«»\"]", "");
                     for (String source : List.of(resultId, name)) {
                         for (int i = 0; i < source.length(); i++) {
                             for (int j = i + 1; j <= source.length(); j++) {
@@ -544,7 +550,7 @@ public class RecipeIndex {
 
         // Индексация по результату
         String resultId = BuiltInRegistries.ITEM.getKey(resultItem).toString().toLowerCase(Locale.ROOT);
-        String name = result.getItemName().getString().toLowerCase(Locale.ROOT).replaceAll("[\\[\\]«»\"]", "");
+        String name = result.getHoverName().getString().toLowerCase(Locale.ROOT).replaceAll("[\\[\\]«»\"]", "");
         Map<String, List<RecipeCollection>> resultIndex =
                 GLOBAL_RECIPE_INDEX.byResult.computeIfAbsent(category, k -> new HashMap<>());
         for (String source : List.of(resultId, name)) {
@@ -616,15 +622,16 @@ public class RecipeIndex {
             RecipeDisplayEntry recipeEntry,
             ContextMap context
     ) {
-        Map<Item, RecipeCollection> byItem = GLOBAL_COLLECTIONS_BY_RESULT.computeIfAbsent(category, k -> new HashMap<>());
+        Map<String, RecipeCollection> byItem = GLOBAL_COLLECTIONS_BY_RESULT.computeIfAbsent(category, k -> new HashMap<>());
         ItemStack result = recipeEntry.display().result().resolveForFirstStack(context);
         if (result == null || result.isEmpty()) return;
         Item resultItem = result.getItem();
+        String resultKey = resultKey(resultItem, result);
 
-        RecipeCollection collection = byItem.get(resultItem);
+        RecipeCollection collection = byItem.get(resultKey);
         if (collection == null) {
             collection = new RecipeCollection(new ArrayList<>());
-            byItem.put(resultItem, collection);
+            byItem.put(resultKey, collection);
             RecipeIndex.GLOBAL_RECIPE_INDEX.allCollections.computeIfAbsent(category, k -> new LinkedHashSet<>()).add(collection);
         }
         List<RecipeDisplayEntry> recipes = collection.getRecipes();
@@ -638,7 +645,7 @@ public class RecipeIndex {
             List<RecipeDisplayEntry> fixed = new ArrayList<>(recipes);
             fixed.add(recipeEntry);
             RecipeCollection newCollection = new RecipeCollection(fixed);
-            byItem.put(resultItem, newCollection);
+            byItem.put(resultKey, newCollection);
             Set<RecipeCollection> set = RecipeIndex.GLOBAL_RECIPE_INDEX.allCollections.computeIfAbsent(category, k -> new LinkedHashSet<>());
             set.remove(collection);
             set.add(newCollection);
@@ -654,11 +661,11 @@ public class RecipeIndex {
         addRecipeToCollectionIfAbsent(category, recipeEntry, context);
 
         // Получаем коллекцию (она гарантированно есть!)
-        Map<Item, RecipeCollection> byItem = GLOBAL_COLLECTIONS_BY_RESULT.computeIfAbsent(category, k -> new HashMap<>());
+        Map<String, RecipeCollection> byItem = GLOBAL_COLLECTIONS_BY_RESULT.computeIfAbsent(category, k -> new HashMap<>());
         ItemStack result = recipeEntry.display().result().resolveForFirstStack(context);
         if (result == null || result.isEmpty()) return;
         Item resultItem = result.getItem();
-        RecipeCollection collection = byItem.get(resultItem);
+        RecipeCollection collection = byItem.get(resultKey(resultItem, result));
         if (collection == null) return; // Уже не может быть, но на всякий случай
 
         // Индексируем (можно оптимизировать чтобы не индексировать дважды, но это уже детали)

@@ -11,11 +11,13 @@
   "server": [
   ],
   "client": [
+    "AbstractContainerScreenAccessor",
     "AbstractCraftingRecipeBookWidgetMixin",
     "AnimatedResultButtonMixin",
     "ClickableWidgetAccessor",
     "ClientPlayNetworkHandlerMixin",
     "RecipeAlternativesWidgetMixin",
+    "RecipeBookHoverHotkeyMixin",
     "RecipeBookResultsAccessor",
     "RecipeBookWidgetAccessor",
     "RecipeBookWidgetSearchMixin",
