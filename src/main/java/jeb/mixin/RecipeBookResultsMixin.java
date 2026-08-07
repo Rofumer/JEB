@@ -2,6 +2,7 @@ package jeb.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
 import jeb.accessor.ClientRecipeBookAccessor;
+import jeb.client.RecipeSearchQueries;
 import jeb.accessor.RecipeBookWidgetBridge;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.Click;
@@ -15,7 +16,6 @@ import net.minecraft.recipe.RecipeDisplayEntry;
 import net.minecraft.recipe.display.RecipeDisplay;
 import net.minecraft.recipe.display.ShapedCraftingRecipeDisplay;
 import net.minecraft.recipe.display.ShapelessCraftingRecipeDisplay;
-import net.minecraft.registry.Registries;
 import net.minecraft.screen.AbstractCraftingScreenHandler;
 import net.minecraft.util.context.ContextParameterMap;
 import org.jetbrains.annotations.Nullable;
@@ -28,7 +28,6 @@ import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 @Mixin(RecipeBookResults.class)
@@ -76,9 +75,7 @@ public class RecipeBookResultsMixin {
 
             if (click.button() == 2) {
                 ItemStack stack = animatedResultButton.getDisplayStack();
-                //String itemName = stack.getItem().asItem().toString();
-                String itemName = Registries.ITEM.getId(stack.getItem()).getPath().toLowerCase(Locale.ROOT);
-                String searchText = "~" + itemName.toLowerCase(Locale.ROOT);
+                String searchText = RecipeSearchQueries.forResult(stack);
 
                 ((RecipeBookWidgetBridge) recipeBookWidget).jeb$pushHistory(
                         ((RecipeBookWidgetAccessor) recipeBookWidget).getSearchField().getText(),
@@ -96,8 +93,7 @@ public class RecipeBookResultsMixin {
 
             if (click.button() == 1) {
                 ItemStack stack = animatedResultButton.getDisplayStack();
-                String itemName = Registries.ITEM.getId(stack.getItem()).toString().toLowerCase(Locale.ROOT); // Локализованное имя (например, "Булыжник")
-                String searchText = "#" + itemName.toLowerCase(Locale.ROOT);
+                String searchText = RecipeSearchQueries.forIngredient(stack);
 
                 ((RecipeBookWidgetBridge) recipeBookWidget).jeb$pushHistory(
                         ((RecipeBookWidgetAccessor) recipeBookWidget).getSearchField().getText(),

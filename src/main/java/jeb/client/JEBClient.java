@@ -70,6 +70,8 @@ public class JEBClient implements ClientModInitializer {
 
     private static KeyBinding keyBinding;
     public static KeyBinding keyBinding2;
+    public static KeyBinding keyViewRecipe;
+    public static KeyBinding keyViewUses;
 
     public static Set<Item> existingResultItems = new HashSet<>();
 
@@ -231,6 +233,20 @@ public class JEBClient implements ClientModInitializer {
                 InputUtil.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
                 GLFW.GLFW_KEY_A, // The keycode of the key
                 JEB_CATEGORY // The translation key of the keybinding's category.
+        ));
+
+        keyViewRecipe = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.jeb.view_recipe",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_R,
+                JEB_CATEGORY
+        ));
+
+        keyViewUses = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.jeb.view_uses",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_U,
+                JEB_CATEGORY
         ));
 
 

@@ -455,7 +455,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
                     if (stacks.isEmpty()) continue;
 
                     ItemStack result = stacks.get(0);
-                    String resultName = Registries.ITEM.getId(result.getItem()).getPath().toLowerCase(Locale.ROOT);
+                    String resultName = result.getName().getString().toLowerCase(Locale.ROOT).trim();
 
                     if (resultName.equals(query)) {
                         for (Ingredient ingredient : recipe1.craftingRequirements().get()) {
@@ -495,6 +495,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
             }
 
             filteredList.addAll(ingredientsList);
+            jEB$sortCraftableFirst(filteredList);
             recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
             ci.cancel();
             return;
@@ -517,6 +518,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
                 }
             }
 
+            jEB$sortCraftableFirst(filteredList);
             recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
             ci.cancel();
             return;
@@ -552,8 +554,14 @@ public abstract class RecipeBookWidgetSearchMixin<T extends AbstractRecipeScreen
 
         string = rawInput;
 
+        jEB$sortCraftableFirst(filteredList);
         recipesArea.setResults(filteredList, resetCurrentPage, filteringCraftable);
         ci.cancel();
+    }
+
+    @Unique
+    private static void jEB$sortCraftableFirst(List<RecipeResultCollection> collections) {
+        collections.sort(Comparator.comparing(RecipeResultCollection::hasCraftableRecipes).reversed());
     }
 
     @Unique
