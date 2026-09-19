@@ -1,5 +1,6 @@
 package jeb.mixin;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.llamalad7.mixinextras.sugar.Local;
 import jeb.accessor.ClientRecipeBookAccessor;
 import jeb.client.RecipeSearchQueries;
@@ -79,7 +80,7 @@ public class RecipeBookResultsMixin {
         //if (animatedResultButton.mouseClicked(mouseX, mouseY, button)) {
 
 
-            if (click.button() == 2) {
+            if (click.button() == InputConstants.MOUSE_BUTTON_MIDDLE) {
                 ItemStack stack = animatedResultButton.getDisplayStack();
                 String searchText = RecipeSearchQueries.forResult(stack);
 
@@ -97,7 +98,7 @@ public class RecipeBookResultsMixin {
                 cir.cancel();
             }
 
-            if (click.button() == 1) {
+            if (click.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
                 ItemStack stack = animatedResultButton.getDisplayStack();
                 String searchText = RecipeSearchQueries.forIngredient(stack);
 
@@ -116,7 +117,7 @@ public class RecipeBookResultsMixin {
             }
 
 
-            if (click.button() == 0) {
+            if (click.button() == InputConstants.MOUSE_BUTTON_LEFT) {
 
 
                 if (!(Minecraft.getInstance().player.containerMenu instanceof AbstractCraftingMenu)) {
