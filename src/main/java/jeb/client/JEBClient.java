@@ -28,7 +28,6 @@ import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.minecraft.world.inventory.RecipeBookType;
-import org.lwjgl.glfw.GLFW;
 
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -151,7 +150,7 @@ public class JEBClient implements ClientModInitializer {
         RecipeDisplayId recipeId = new RecipeDisplayId(9999);
 
         List<SlotDisplay> slots = List.of(
-                new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, id))
+                RecipeLoader.tagSlot(TagKey.create(Registries.ITEM, id))
         );
         SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStackTemplate(item, 1));
         SlotDisplay.ItemSlotDisplay stationSlot =
@@ -220,29 +219,29 @@ public class JEBClient implements ClientModInitializer {
 
         keyBinding = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.jeb.optional_recipes_loading_screen", // The translation key of the keybinding's name
-                InputConstants.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
-                GLFW.GLFW_KEY_APOSTROPHE, // The keycode of the key
+                InputConstants.Type.KEYBOARD, // The type of the keybinding, KEYBOARD for keyboard, MOUSE for mouse.
+                InputConstants.KEY_APOSTROPHE, // The keycode of the key
                 JEB_CATEGORY // The translation key of the keybinding's category.
         ));
 
         keyBinding2 = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.jeb.add_remove_favorite_recipes", // The translation key of the keybinding's name
-                InputConstants.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
-                GLFW.GLFW_KEY_A, // The keycode of the key
+                InputConstants.Type.KEYBOARD, // The type of the keybinding, KEYBOARD for keyboard, MOUSE for mouse.
+                InputConstants.KEY_A, // The keycode of the key
                 JEB_CATEGORY // The translation key of the keybinding's category.
         ));
 
         keyViewRecipe = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.jeb.view_recipe",
-                InputConstants.Type.KEYSYM,
-                GLFW.GLFW_KEY_R,
+                InputConstants.Type.KEYBOARD,
+                InputConstants.KEY_R,
                 JEB_CATEGORY
         ));
 
         keyViewUses = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.jeb.view_uses",
-                InputConstants.Type.KEYSYM,
-                GLFW.GLFW_KEY_U,
+                InputConstants.Type.KEYBOARD,
+                InputConstants.KEY_U,
                 JEB_CATEGORY
         ));
 

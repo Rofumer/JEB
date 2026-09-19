@@ -9,6 +9,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -84,6 +85,14 @@ public class RecipeLoader {
             cachedVanillaRecipeCount = 1358;
             cachedVanillaCTID = 259;
         }
+    }
+
+    // Since 26.3 TagSlotDisplay holds a HolderSet instead of a TagKey.
+    public static SlotDisplay.TagSlotDisplay tagSlot(TagKey<Item> tag) {
+        HolderSet<Item> set = BuiltInRegistries.ITEM.get(tag)
+                .<HolderSet<Item>>map(named -> named)
+                .orElseGet(() -> HolderSet.emptyNamed(BuiltInRegistries.ITEM, tag));
+        return new SlotDisplay.TagSlotDisplay(set);
     }
 
     public static int getVanillaRecipeCount() {
@@ -218,7 +227,7 @@ public class RecipeLoader {
                             )
                     ));
                 } else if (baseTag != null) {
-                    baseSlot = new SlotDisplay.TagSlotDisplay(
+                    baseSlot = tagSlot(
                             TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("minecraft", baseTag))
                     );
                 } else {
@@ -236,7 +245,7 @@ public class RecipeLoader {
                             )
                     ));
                 } else if (additionTag != null) {
-                    additionSlot = new SlotDisplay.TagSlotDisplay(
+                    additionSlot = tagSlot(
                             TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("minecraft", additionTag))
                     );
                 } else {
@@ -290,7 +299,7 @@ public class RecipeLoader {
                 String ingredientTag = parseTagId(line, "ingredient");
 
                 if (ingredientTag != null) {
-                    ingredientSlot = new SlotDisplay.TagSlotDisplay(
+                    ingredientSlot = tagSlot(
                             TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("minecraft", ingredientTag))
                     );
                 } else {
@@ -416,7 +425,7 @@ public class RecipeLoader {
                         String[] splitTag = tagName.split(":");
                         String lastWord = splitTag[splitTag.length - 1];
                         TagKey<Item> tagKey = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("minecraft", lastWord));
-                        slots.add(new SlotDisplay.TagSlotDisplay(tagKey));
+                        slots.add(tagSlot(tagKey));
                     } else if (rawSlot.startsWith("CompositeSlotDisplay") || rawSlot.startsWith("Composite")) {
                         List<String> innerItems = extractItemSlotDisplays(rawSlot);
                         List<SlotDisplay> compositeContents = new ArrayList<>();
@@ -543,7 +552,7 @@ public class RecipeLoader {
                         String[] splitTag = tagName.split(":");
                         String lastWord = splitTag[splitTag.length - 1];
                         TagKey<Item> tagKey = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("minecraft", lastWord));
-                        slots.add(new SlotDisplay.TagSlotDisplay(tagKey));
+                        slots.add(tagSlot(tagKey));
                     } else if (rawSlot.startsWith("CompositeSlotDisplay") || rawSlot.startsWith("Composite")) {
                         List<String> innerItems = extractItemSlotDisplays(rawSlot);
                         List<SlotDisplay> compositeContents = new ArrayList<>();
@@ -793,8 +802,8 @@ public class RecipeLoader {
 
             if (patternEntry != null) {
                 return new SlotDisplay.SmithingTrimDemoSlotDisplay(
-                        new SlotDisplay.TagSlotDisplay(baseTagKey),
-                        new SlotDisplay.TagSlotDisplay(materialTagKey),
+                        tagSlot(baseTagKey),
+                        tagSlot(materialTagKey),
                         patternEntry
                 );
             }
@@ -831,8 +840,8 @@ public class RecipeLoader {
 
             if (patternEntry != null) {
                 return new SlotDisplay.SmithingTrimDemoSlotDisplay(
-                        new SlotDisplay.TagSlotDisplay(baseTagKey),
-                        new SlotDisplay.TagSlotDisplay(materialTagKey),
+                        tagSlot(baseTagKey),
+                        tagSlot(materialTagKey),
                         patternEntry
                 );
             }

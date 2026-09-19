@@ -4,8 +4,6 @@
   "package": "jeb.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ClientRecipeBookMixin",
-    "RecipeBookResultsMixin",
     "ServerRecipeBookMixin"
   ],
   "server": [
@@ -14,11 +12,13 @@
     "AbstractContainerScreenAccessor",
     "AbstractCraftingRecipeBookWidgetMixin",
     "AnimatedResultButtonMixin",
+    "ClientRecipeBookMixin",
     "ClickableWidgetAccessor",
     "ClientPlayNetworkHandlerMixin",
     "RecipeAlternativesWidgetMixin",
     "RecipeBookHoverHotkeyMixin",
     "RecipeBookResultsAccessor",
+    "RecipeBookResultsMixin",
     "RecipeBookWidgetAccessor",
     "RecipeBookWidgetSearchMixin",
     "RecipeGroupButtonWidgetMixin",

@@ -1,5 +1,6 @@
 package jeb.mixin;
 
+import jeb.client.RecipeLoader;
 import jeb.accessor.ClientRecipeBookAccessor;
 import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
@@ -8,6 +9,7 @@ import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.gui.screens.recipebook.RecipeUpdateListener;
 import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -97,7 +99,7 @@ public abstract class RecipeBookWidgetMixin {
             RecipeDisplayId recipeId = new RecipeDisplayId(9999);
 
             List<SlotDisplay> slots = new ArrayList<>();
-            slots.add(new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("minecraft", id.getPath()))));
+            slots.add(RecipeLoader.tagSlot(TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("minecraft", id.getPath()))));
 
             SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStackTemplate(item, 1));
 
@@ -133,7 +135,7 @@ public abstract class RecipeBookWidgetMixin {
                 RecipeDisplayId recipeId = new RecipeDisplayId(9999);
 
                 List<SlotDisplay> slots = List.of(
-                        new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, id))
+                        RecipeLoader.tagSlot(TagKey.create(Registries.ITEM, id))
                 );
 
                 SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStackTemplate(item));
@@ -169,10 +171,13 @@ public abstract class RecipeBookWidgetMixin {
             return Optional.of(item.value());
         }
 
-        if (slot instanceof SlotDisplay.TagSlotDisplay(TagKey<Item> tag)) {
+        if (slot instanceof SlotDisplay.TagSlotDisplay(HolderSet<Item> tag)) {
 
-            // В 1.21.5 можно безопасно использовать iterateEntries
-            for (Holder<Item> entry : BuiltInRegistries.ITEM.getTagOrEmpty(tag)) {
+            // С 26.3 внутри HolderSet; для именованного тега берём актуальное содержимое из реестра
+            Iterable<Holder<Item>> entries = tag.unwrapKey()
+                    .<Iterable<Holder<Item>>>map(BuiltInRegistries.ITEM::getTagOrEmpty)
+                    .orElse(tag);
+            for (Holder<Item> entry : entries) {
                 return Optional.of(entry.value());
             }
         }

@@ -424,7 +424,7 @@ public class RecipeIndex {
         RecipeDisplayId recipeId = new RecipeDisplayId(9999);
 
         List<SlotDisplay> slots = List.of(
-                new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, id))
+                RecipeLoader.tagSlot(TagKey.create(Registries.ITEM, id))
         );
         SlotDisplay.ItemStackSlotDisplay resultSlot = new SlotDisplay.ItemStackSlotDisplay(new ItemStackTemplate(item, 1));
         SlotDisplay.ItemSlotDisplay stationSlot =

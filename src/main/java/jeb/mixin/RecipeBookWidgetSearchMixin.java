@@ -1,5 +1,6 @@
 package jeb.mixin;
 
+import jeb.client.RecipeLoader;
 import jeb.accessor.AnimatedResultButtonExtension;
 import jeb.accessor.ClientRecipeBookAccessor;
 import jeb.accessor.RecipeBookWidgetBridge;
@@ -397,7 +398,7 @@ public abstract class RecipeBookWidgetSearchMixin<T extends RecipeBookMenu> impl
         RecipeDisplayId recipeId = new RecipeDisplayId(9999);
 
         List<SlotDisplay> slots = List.of(
-                new SlotDisplay.TagSlotDisplay(TagKey.create(Registries.ITEM, id))
+                RecipeLoader.tagSlot(TagKey.create(Registries.ITEM, id))
         );
 
         SlotDisplay.ItemStackSlotDisplay resultSlot =
