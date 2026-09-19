@@ -312,8 +312,9 @@ public class RecipeLoader {
                     String ingredientsSection = ingredientMatcher.group(1);
                     List<SlotDisplay> ingredientSlots = new ArrayList<>();
 
+                    // Без "\\]" в конце: ленивая группа выше отрезает у последнего предмета закрывающую скобку
                     Matcher itemMatcher = Pattern.compile(
-                            "ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:([^\\]]+)](?:=minecraft:[^}]+)?}\\]"
+                            "ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:([^\\]]+)](?:=minecraft:[^}]+)?}"
                     ).matcher(ingredientsSection);
 
                     while (itemMatcher.find()) {
@@ -671,8 +672,9 @@ public class RecipeLoader {
     }
 
     private static String extractItemIdFromItemSlot(String text) {
+        // Без "\\]" в конце: parseSingleCompositeItem передаёт сюда текст без закрывающей скобки
         Matcher m = Pattern.compile(
-                "ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:([^\\]]+)](?:=minecraft:[^}]+)?}\\]"
+                "ItemSlotDisplay\\[item=Reference\\{ResourceKey\\[minecraft:item / minecraft:([^\\]]+)](?:=minecraft:[^}]+)?}"
         ).matcher(text);
         return m.find() ? fixResourceName(m.group(1)) : null;
     }
