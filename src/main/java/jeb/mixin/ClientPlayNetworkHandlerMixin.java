@@ -67,11 +67,13 @@ public abstract class ClientPlayNetworkHandlerMixin {
         SlotDisplay resultSlot = entry.contents().display().result();
 
         List<ItemStack> stacks = resultSlot.resolveForStacks(context);
+        if (stacks.isEmpty()) return;
 
         ItemStack stack = stacks.get(0);
 
         // Добавляем в Set
-        if(entry.contents().display().craftingStation().resolveForStacks(context).getFirst().getItem() == Items.CRAFTING_TABLE) {
+        List<ItemStack> stationStacks = entry.contents().display().craftingStation().resolveForStacks(context);
+        if (!stationStacks.isEmpty() && stationStacks.get(0).getItem() == Items.CRAFTING_TABLE) {
             existingResultItems.add(stack.getItem());
         }
 
@@ -121,10 +123,7 @@ public abstract class ClientPlayNetworkHandlerMixin {
                     List<ItemStack> stacks = resultSlot.resolveForStacks(context);
 
 
-                    ItemStack stack = stacks.getFirst();
-
-
-                    if (stack.getItem() == Items.CRAFTING_TABLE) craftingStationId=entry.id().index();
+                    if (!stacks.isEmpty() && stacks.getFirst().getItem() == Items.CRAFTING_TABLE) craftingStationId=entry.id().index();
 
 
                     knownRecipeCount++;
