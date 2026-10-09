@@ -48,17 +48,17 @@ public abstract class ClientPlayNetworkHandlerMixin {
         if (recipesLoaded) {
             long startTime = System.currentTimeMillis();
             RecipeBookCategory category = entry.contents().category();
-            LOGGER.info("[JEB] checking recipe {} started at {}", entry.contents().display().result().resolveForFirstStack(context).toString() ,new Date(startTime));
+            LOGGER.debug("[JEB] checking recipe {} started at {}", entry.contents().display().result().resolveForFirstStack(context).toString() ,new Date(startTime));
             // Проверяем по id (по новому методу!)
             if (!RecipeIndex.recipeIdExistsInIndex(category, entry.contents())) {
                 RecipeIndex.addAndIndexRecipeIfAbsent(category, entry.contents(), context);
-                LOGGER.info("[JEB] The recipe has been added: {}", entry.contents().display().result().resolveForFirstStack(context).toString());
+                LOGGER.debug("[JEB] The recipe has been added: {}", entry.contents().display().result().resolveForFirstStack(context).toString());
             }
 
 
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
-            LOGGER.info("[JEB] checking recipe done at {} ({} ms)", new Date(endTime), duration);
+            LOGGER.debug("[JEB] checking recipe done at {} ({} ms)", new Date(endTime), duration);
 
             return;
         }
