@@ -3,6 +3,7 @@ package jeb.mixin;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -10,7 +11,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import io.netty.buffer.Unpooled;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookSettingsPacket;
 import net.minecraft.resources.ResourceKey;
@@ -19,6 +22,8 @@ import net.minecraft.stats.RecipeBook;
 import net.minecraft.stats.ServerRecipeBook;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Mixin(ServerRecipeBook.class)
 public abstract class ServerRecipeBookMixin {
@@ -26,6 +31,13 @@ public abstract class ServerRecipeBookMixin {
     @Shadow
     @Final
     private ServerRecipeBook.DisplayResolver displayResolver;
+
+    @Unique
+    private static final Logger LOGGER = LoggerFactory.getLogger("JEB");
+
+    // С запасом ниже лимита фрейма 2 МБ, даже если сжатие на сервере выключено
+    @Unique
+    private static final int MAX_CHUNK_BYTES = 1 << 20;
 
     @Inject(
             method = "sendInitialRecipeBook",
@@ -55,8 +67,40 @@ public abstract class ServerRecipeBookMixin {
             });
         }
 
-        // Отправляем весь список рецептов игроку
-        player.connection.send(new ClientboundRecipeBookAddPacket(allEntries, true));
+        // Одним пакетом всё не влезает в большие сборки (лимит 8 МБ / 2 МБ на фрейм),
+        // а битый display модового рецепта роняет кодирование всего пакета и кикает игрока.
+        // Поэтому проверяем каждую запись кодированием и режем список на куски.
+        List<ClientboundRecipeBookAddPacket.Entry> chunk = new ArrayList<>();
+        int chunkBytes = 0;
+        boolean first = true;
+        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), player.registryAccess());
+        try {
+            for (ClientboundRecipeBookAddPacket.Entry entry : allEntries) {
+                buf.clear();
+                try {
+                    ClientboundRecipeBookAddPacket.Entry.STREAM_CODEC.encode(buf, entry);
+                } catch (Exception e) {
+                    LOGGER.warn("[JEB] Skipping recipe display that cannot be encoded: {}", entry.contents().display(), e);
+                    continue;
+                }
+                int size = buf.writerIndex();
+                if (!chunk.isEmpty() && chunkBytes + size > MAX_CHUNK_BYTES) {
+                    player.connection.send(new ClientboundRecipeBookAddPacket(chunk, first));
+                    first = false;
+                    chunk = new ArrayList<>();
+                    chunkBytes = 0;
+                }
+                chunk.add(entry);
+                chunkBytes += size;
+            }
+        } finally {
+            buf.release();
+        }
+
+        // Отправляем остаток (и пустой replace-пакет, если рецептов нет вообще)
+        if (!chunk.isEmpty() || first) {
+            player.connection.send(new ClientboundRecipeBookAddPacket(chunk, first));
+        }
 
         // Отменяем оригинальный метод
         ci.cancel();
