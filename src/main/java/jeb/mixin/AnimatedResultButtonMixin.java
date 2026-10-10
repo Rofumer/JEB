@@ -1,11 +1,14 @@
 package jeb.mixin;
 
 import jeb.accessor.AnimatedResultButtonExtension;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.recipebook.RecipeButton;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
@@ -114,11 +117,25 @@ public class AnimatedResultButtonMixin implements AnimatedResultButtonExtension 
     private void onGetTooltip(ItemStack stack, CallbackInfoReturnable<List<Component>> cir) {
         try {
             List<Component> list = new ArrayList<>(Screen.getTooltipFromItem(Minecraft.getInstance(), stack));
+            jeb$addModName(list, stack);
             list.add(MORE_RECIPES_TEXT);
             cir.setReturnValue(list);
         } catch (Exception e) {
             e.printStackTrace();
             cir.setReturnValue(List.of(Component.literal("§c[Error rendering tooltip]")));
         }
+    }
+
+    // Название мода, добавившего предмет (как в JEI). Если JEI или другой мод уже добавил такую строку — не дублируем.
+    @Unique
+    private static void jeb$addModName(List<Component> list, ItemStack stack) {
+        String modId = BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace();
+        String modName = FabricLoader.getInstance().getModContainer(modId)
+                .map(container -> container.getMetadata().getName())
+                .orElse(modId);
+        for (Component line : list) {
+            if (modName.equals(line.getString())) return;
+        }
+        list.add(Component.literal(modName).withStyle(ChatFormatting.BLUE, ChatFormatting.ITALIC));
     }
 }
