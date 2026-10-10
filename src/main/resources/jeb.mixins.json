@@ -15,6 +15,7 @@
     "ClientRecipeBookMixin",
     "ClickableWidgetAccessor",
     "ClientPlayNetworkHandlerMixin",
+    "MultiPlayerGameModeMixin",
     "RecipeAlternativesWidgetMixin",
     "RecipeBookHoverHotkeyMixin",
     "RecipeBookResultsAccessor",

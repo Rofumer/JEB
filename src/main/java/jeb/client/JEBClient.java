@@ -25,8 +25,11 @@ import net.minecraft.world.item.crafting.RecipeBookCategory;
 import net.minecraft.world.item.crafting.display.RecipeDisplay;
 import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
+import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.SlotDisplay;
+import net.minecraft.world.inventory.AbstractCraftingMenu;
+import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.RecipeBookType;
 
 import java.io.FileReader;
@@ -358,5 +361,20 @@ public class JEBClient implements ClientModInitializer {
                 }
             }*/
         });
+    }
+
+    // Влезает ли рецепт в сетку крафта (например 3x3 не влезает в инвентарь 2x2). Остальные рецепты не ограничиваем.
+    public static boolean fitsCraftingGrid(RecipeBookMenu menu, RecipeDisplay display) {
+        if (!(menu instanceof AbstractCraftingMenu craftingMenu)) {
+            return true;
+        }
+        int w = craftingMenu.getGridWidth();
+        int h = craftingMenu.getGridHeight();
+        if (display instanceof ShapedCraftingRecipeDisplay shaped) {
+            return w >= shaped.width() && h >= shaped.height();
+        } else if (display instanceof ShapelessCraftingRecipeDisplay shapeless) {
+            return w * h >= shapeless.ingredients().size();
+        }
+        return true;
     }
 }
